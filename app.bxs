@@ -7,6 +7,12 @@ app.use( boxExpressSession() )
 
 app.set( "views", expandPath( "./views" ) )
 
+// Strips HTML/script markup from untrusted input while leaving plain-text
+// punctuation (&, ", <) intact, since messages are rendered via textContent.
+function cleanInput( str ) {
+	return trim( decodeForHTML( getSafeHTML( str, { basePolicy: "none" } ) ) )
+}
+
 // These are values are valid for the demo app only.
 pulsely = {
 	appKey: "bp_9050d5d84af54f0aa035c39a",
@@ -20,8 +26,8 @@ app.get( "/", ( req, res ) => {
 } )
 
 app.post( "/chat/send", ( req, res ) => {
-	var user = trim( req.body.user ?: "" )
-	var message = trim( req.body.message ?: "" )
+	var user = cleanInput( req.body.user ?: "" )
+	var message = cleanInput( req.body.message ?: "" )
 
 	if ( user == "" ) {
 		user = "Anonymous"
