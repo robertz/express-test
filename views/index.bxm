@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<bx:output><title>#data.title#</title></bx:output>
+	<link rel="stylesheet" href="/css/chat.css">
+	<script src="https://pulsely.dev/assets/js/pulsely.min.js"></script>
+</head>
+<body>
+	<div class="chat-card">
+		<div class="chat-header">
+			<bx:output><h1>#data.title#</h1></bx:output>
+			<div class="chat-status" id="status">
+				<span class="dot"></span>
+				<span id="status-text">connecting…</span>
+			</div>
+		</div>
+
+		<ul class="chat-messages" id="messages"></ul>
+
+		<form class="chat-form" id="chat-form">
+			<input id="username" placeholder="Name" maxlength="40" autocomplete="off">
+			<input id="message" placeholder="Say something…" maxlength="500" autocomplete="off" required>
+			<button type="submit">Send</button>
+		</form>
+	</div>
+
+	<bx:output><script>window.PULSELY_KEY = "#data.pulselyKey#";</script></bx:output>
+	<script src="/js/chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# BoxLang / CommandBox
+.boxlang/
+.engine/
+.artifacts/
+.tmp/
+logs/
+modules/
+WEB-INF/
+
+# Environment / secrets
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/*
+!.vscode/settings.json
+.idea/
+
+# Node (in case front-end tooling gets added)
+node_modules/
+npm-debug.log*

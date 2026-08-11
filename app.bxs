@@ -1,0 +1,62 @@
+app = boxExpress()
+
+app.use( boxExpressJSON() )        // parses application/json bodies into req.body
+app.use( boxExpressUrlencoded() )  // parses application/x-www-form-urlencoded bodies
+app.use( boxExpressStatic( expandPath( "./public" ) ) )
+app.use( boxExpressSession() )
+
+app.set( "views", expandPath( "./views" ) )
+
+// These are values are valid for the demo app only.
+pulsely = {
+	appKey: "bp_9050d5d84af54f0aa035c39a",
+	appId: "41949e4270b84cf1a7e7912e8a1984a0",
+	appSecret: "a6655d857faf4f76b3c0308eb2474c105f809802b5ee4d4aaeb729ec1c76f0c7",
+	baseUrl: "https://pulsely.dev"
+}
+
+app.get( "/", ( req, res ) => {
+	res.render( "index", { title: "Simple Chat", pulselyKey: pulsely.appKey } )
+} )
+
+app.post( "/chat/send", ( req, res ) => {
+	var user = trim( req.body.user ?: "" )
+	var message = trim( req.body.message ?: "" )
+
+	if ( user == "" ) {
+		user = "Anonymous"
+	}
+	if ( message == "" ) {
+		res.status( 400 ).json( { error: "message is required" } )
+		return
+	}
+
+	var path = "/apps/#pulsely.appId#/events"
+	var body = jsonSerialize( {
+		channel: "chat",
+		event: "message",
+		data: { user: user, message: message, time: dateTimeFormat( now(), "iso8601" ) }
+	} )
+	var timestamp = "#createObject( "java", "java.time.Instant" ).now().getEpochSecond()#"
+	var bodyHash = lCase( hash( body, "SHA-256" ) )
+	var stringToSign = "POST" & char( 10 ) & path & char( 10 ) & timestamp & char( 10 ) & bodyHash
+	var signature = lCase( hmac( stringToSign, pulsely.appSecret, "HmacSHA256" ) )
+
+	bx:http method="POST" charset="utf-8" url="#pulsely.baseUrl##path#" result="pulselyResult" {
+		bx:httpparam type="header" name="Content-Type" value="application/json";
+		bx:httpparam type="header" name="X-Pulsely-Timestamp" value="#timestamp#";
+		bx:httpparam type="header" name="X-Pulsely-Signature" value="#signature#";
+		bx:httpparam type="body" value="#body#";
+	}
+
+	if ( left( pulselyResult.statusCode, 3 ) != "200" ) {
+		res.status( 502 ).json( { error: "failed to publish message", detail: pulselyResult.statusCode } )
+		return
+	}
+
+	res.json( { ok: true } )
+} )
+
+app.listen( 3000, ( port ) => {
+	println( "listening on #port#" )
+} )
