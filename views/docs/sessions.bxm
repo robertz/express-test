@@ -21,6 +21,28 @@
 } )</code></pre>
 <p><code class="bx-inline">req.destroySession()</code> clears the stored session data and expires the session cookie on the client (<code class="bx-inline">Max-Age=0</code>) — the next request starts a fresh session.</p>
 
+<h2>Durable sessions (boxExpressCacheStore)</h2>
+<p>The default session store is an in-memory <code class="bx-inline">ConcurrentHashMap</code> on the <code class="bx-inline">Session</code> instance — fine for one process, gone on restart, and not shared across a cluster. <code class="bx-inline">boxExpressCacheStore()</code> is a ready-made <code class="bx-inline">store</code> backed by BoxLang's own <code class="bx-inline">cache()</code> service instead:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressSession( { store: boxExpressCacheStore( "sessions" ) } ) )</code></pre>
+<p>The named cache (<code class="bx-inline">"sessions"</code> here) has to already be registered in <code class="bx-inline">boxlang.json</code> — this doesn't create one, it just talks to it. Point that cache's <code class="bx-inline">objectStore</code> at <code class="bx-inline">"JDBCStore"</code> and session data lands in a real SQL table instead of memory, surviving a restart and shared across every process pointed at the same database:</p>
+<pre class="bx-code"><span class="bx-code-label">json — boxlang.json</span><code>"caches": {
+  "default": { "provider": "BoxCacheProvider" },
+  "sessions": {
+    "provider": "BoxCacheProvider",
+    "properties": {
+      "objectStore": "JDBCStore",
+      "datasource": "sessionDB",
+      "table": "boxlang_sessions",
+      "autoCreate": false
+    }
+  }
+}</code></pre>
+<p>See <a href="/docs/config">Configuration</a> for the full datasource block. Two things worth knowing, found by actually running it against a real database rather than trusting the docs: keep <code class="bx-inline">"default"</code> in the <code class="bx-inline">caches</code> block alongside your own entry, since BoxLang's own query engine depends on it existing — and leave <code class="bx-inline">autoCreate</code> off. <code class="bx-inline">autoCreate: true</code> can throw <code class="bx-inline">Cache [default] does not exist</code> at BoxLang startup, since <code class="bx-inline">JDBCStore</code>'s own table-creation check isn't ordered relative to <code class="bx-inline">"default"</code>'s own registration. Create the table once yourself and it's a non-issue.</p>
+<div class="bx-callout bx-warn">
+  <strong>No live demo here</strong>
+  This site's own sessions still use the default in-memory store — wiring a JDBC-backed one in means adding a real datasource to this site's config, which isn't done here. The code above is exactly what was verified (against a real Derby-backed cache, <code class="bx-inline">cachePut</code>/<code class="bx-inline">cacheGet</code> round-tripping through an actual table) while building this feature — just not pointed at this site's own session store.
+</div>
+
 <h2>The session cookie</h2>
 <p>The session cookie is named <code class="bx-inline">connect.sid</code>, matching Express's own default — familiar if you're coming from Node. It's set with <code class="bx-inline">HttpOnly</code> by default, the same as <code class="bx-inline">res.cookie()</code>.</p>
 
