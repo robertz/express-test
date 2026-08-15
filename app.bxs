@@ -6,7 +6,7 @@ app.use(
     boxExpressJSON(),
     boxExpressUrlencoded(),
     boxExpressSession(),
-    boxExpressStatic( expandPath( "./public" ) ),
+    boxExpressStatic( expandPath( "./public" ), { maxAge: 86400 } ),  // cache assets for 1 day
     boxExpressHelmet()
 )
 app.set( "views", expandPath( "./views" ) )
@@ -94,14 +94,17 @@ app.get( "/docs/lifecycle", ( req, res ) => {
     res.render( "docs/lifecycle", { title: "Process Lifecycle", docsMode: true, currentPath: req.path } )
 } )
 
-app.get( "/upload", ( req, res ) => {
-    res.render( "upload", { title: "Upload Demo", docsMode: false, currentPath: req.path } )
+app.get( "/upload", boxExpressCsrf(), ( req, res ) => {
+    res.render( "upload", { title: "Upload Demo", docsMode: false, currentPath: req.path, csrfToken: req.csrfToken() } )
 } )
 
 app.post(
     "/upload",
     boxExpressRateLimit( { windowMs: 5 * 60000, max: 10 } ),
     boxExpressUpload( { dest: expandPath( "./uploads" ) } ),
+    // After boxExpressUpload(), not before — this needs req.body._csrf,
+    // which the multipart parser above is what populates it.
+    boxExpressCsrf(),
     ( req, res ) => {
         res.render( "upload", {
             title: "Upload Demo",

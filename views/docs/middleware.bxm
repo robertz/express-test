@@ -39,6 +39,7 @@
   <tr><td><code class="bx-inline">boxExpressHelmet(options)</code></td><td>Sets security-hardening response headers (clickjacking, MIME-sniffing, referrer leakage, etc.) — see below</td></tr>
   <tr><td><code class="bx-inline">boxExpressCors(options)</code></td><td>Cross-Origin Resource Sharing — sets <code class="bx-inline">Access-Control-*</code> headers and answers preflight requests — see below</td></tr>
   <tr><td><code class="bx-inline">boxExpressRateLimit(options)</code></td><td>Fixed-window rate limiting, keyed by <code class="bx-inline">req.ip</code> by default — see below</td></tr>
+  <tr><td><code class="bx-inline">boxExpressCsrf(options)</code></td><td>CSRF protection via <code class="bx-inline">req.session</code> — exposes <code class="bx-inline">req.csrfToken()</code> — see below</td></tr>
   <tr><td><code class="bx-inline">boxExpressRouter()</code></td><td>Returns a mountable <code class="bx-inline">Router</code> — see <a href="/docs/routing">Routing</a></td></tr>
 </table>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressJSON() )
@@ -109,6 +110,25 @@ app.use( "/login", boxExpressRateLimit( { windowMs: 15 * 60000, max: 5 } ) )  //
 <div class="bx-callout">
   <strong>Try it live</strong>
   This site's own <a href="/upload">Upload Demo</a> is rate-limited exactly this way — 10 uploads per 5 minutes per IP. Submit the form more than 10 times in a row to see the <code class="bx-inline">429</code>.
+</div>
+
+<h2>CSRF protection (boxExpressCsrf)</h2>
+<p>Mirrors the classic <a href="https://github.com/expressjs/csurf" target="_blank" rel="noopener">csurf</a> package's session-based token strategy. The token lives in <code class="bx-inline">req.session</code>, not its own cookie, so this must be registered <em>after</em> <code class="bx-inline">boxExpressSession()</code>:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressSession() )
+app.use( boxExpressUrlencoded() )   // before Csrf if reading the token from a form field
+app.use( boxExpressCsrf() )
+
+app.get( "/form", ( req, res ) => {
+    res.render( "form", { csrfToken: req.csrfToken() } )
+} )</code></pre>
+<pre class="bx-code"><span class="bx-code-label">html — views/form.bxm</span><code>&lt;form method="POST" action="/form"&gt;
+  &lt;input type="hidden" name="_csrf" value="##data.csrfToken##"&gt;
+  ...
+&lt;/form&gt;</code></pre>
+<p>"Safe" methods (<code class="bx-inline">GET</code>/<code class="bx-inline">HEAD</code>/<code class="bx-inline">OPTIONS</code> by default) never validate — a token is only minted and exposed via <code class="bx-inline">req.csrfToken()</code> for those, since that's how a token gets into a form before any state-changing request happens. Every other method must submit a matching token: <code class="bx-inline">req.body._csrf</code> first, falling back to an <code class="bx-inline">X-CSRF-Token</code> header for non-form (JSON/AJAX) clients. A missing/mismatched token gets a <code class="bx-inline">403</code> before the route handler ever runs. Registering this before <code class="bx-inline">req.session</code> exists throws immediately rather than silently doing nothing.</p>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  This site's own <a href="/upload">Upload Demo</a> form carries a real <code class="bx-inline">_csrf</code> hidden field, validated by <code class="bx-inline">boxExpressCsrf()</code> — registered <em>after</em> <code class="bx-inline">boxExpressUpload()</code> on that route specifically, since it needs <code class="bx-inline">req.body._csrf</code>, which the multipart parser is what populates. Open dev tools, edit or remove the hidden field's value, and submit — you'll get a <code class="bx-inline">403</code> instead of the upload going through.
 </div>
 
 <h2>Error-handling middleware</h2>

@@ -40,6 +40,7 @@
 <bx:else>
 
   <form method="POST" action="/upload" enctype="multipart/form-data" class="bx-upload-form">
+    <input type="hidden" name="_csrf" value="#data.csrfToken#">
     <label class="bx-upload-field">
       <span>Note (optional)</span>
       <input type="text" name="note" placeholder="anything, just to show req.body alongside req.files">
@@ -54,7 +55,9 @@
   <h2 class="bx-section-title" style="margin-top:40px;">How this route is built</h2>
   <pre class="bx-code"><span class="bx-code-label">bxs — app.bxs</span><code>app.post(
     "/upload",
+    boxExpressRateLimit( { windowMs: 5 * 60000, max: 10 } ),   // 10 uploads / 5 min per IP
     boxExpressUpload( { dest: expandPath( "./uploads" ) } ),
+    boxExpressCsrf(),   // after Upload — needs req.body._csrf, which it just parsed
     ( req, res ) => {
         res.render( "upload", {
             title: "Upload Demo",
@@ -65,7 +68,7 @@
         } )
     }
 )</code></pre>
-  <p>See <a href="/docs/static-files">Static Files &amp; Uploads</a> for the full write-up.</p>
+  <p>See <a href="/docs/static-files">Static Files &amp; Uploads</a> for uploads, <a href="/docs/middleware">Middleware</a> for rate limiting and CSRF.</p>
 
 </bx:if>
 
