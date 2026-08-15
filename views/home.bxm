@@ -1,0 +1,110 @@
+<bx:include template="partials/_head.bxm">
+<bx:output>
+<section class="bx-hero">
+  <h1>BoxLang Express</h1>
+  <p class="bx-tagline">An Express.js-style API for building lightweight HTTP servers in BoxLang — routing, middleware, sessions, views, and file uploads, on top of the JDK's own <code class="bx-inline">com.sun.net.httpserver.HttpServer</code>.</p>
+  <div class="bx-hero-actions">
+    <a class="bx-btn bx-btn-primary" href="/docs/getting-started">Get Started</a>
+    <a class="bx-btn bx-btn-secondary" href="/docs/routing">Read the Docs</a>
+  </div>
+</section>
+
+<section class="bx-home-section">
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app = boxExpress()
+
+app.use( boxExpressJSON() )
+
+app.get( "/", ( req, res ) => {
+    res.send( "Hello from BoxLang Express!" )
+} )
+
+app.get( "/users/:id", ( req, res ) => {
+    res.json( { id: req.params.id } )
+} )
+
+app.listen( 3000, ( port ) => {
+    println( "Listening on ##port##" )
+} )</code></pre>
+</section>
+
+<section class="bx-home-section">
+  <p class="bx-section-title">Why BoxLang Express</p>
+  <div class="bx-feature-grid">
+    <div class="bx-feature-card">
+      <h3>Familiar routing</h3>
+      <p><code class="bx-inline">app.get/post/put/patch/delete</code>, route params, wildcards, and mountable sub-routers — the same shape as Express.</p>
+    </div>
+    <div class="bx-feature-card">
+      <h3>Middleware stack</h3>
+      <p><code class="bx-inline">app.use()</code> with the standard <code class="bx-inline">(req, res, next)</code> signature, plus 4-arg error middleware.</p>
+    </div>
+    <div class="bx-feature-card">
+      <h3>Sessions, views, uploads</h3>
+      <p>Cookie-based sessions, <code class="bx-inline">.bxm</code>/<code class="bx-inline">.hbs</code> view rendering, and multipart file uploads out of the box.</p>
+    </div>
+    <div class="bx-feature-card">
+      <h3>Virtual-thread concurrency</h3>
+      <p>Every request runs on its own JDK virtual thread — no manual thread-pool tuning, no request serialization.</p>
+    </div>
+    <div class="bx-feature-card">
+      <h3>Dev-mode auto-reload</h3>
+      <p><code class="bx-inline">app.set("reloadOnChange", true)</code> watches your source and restarts the process on save.</p>
+    </div>
+    <div class="bx-feature-card">
+      <h3>Clean process lifecycle</h3>
+      <p>Ctrl-C/SIGTERM shut the server down gracefully; a port already in use exits with a message, not a stack trace.</p>
+    </div>
+  </div>
+</section>
+
+<section class="bx-home-section">
+  <p class="bx-section-title">Documentation</p>
+  <figure class="bx-screenshot">
+    <a href="/docs/getting-started"><img src="/assets/img/screenshots/docs-preview.png" alt="The BoxLang Express documentation, showing the sidebar navigation and a docs page"></a>
+    <figcaption>The docs site itself — sidebar nav, code blocks, and callouts, all built with plain .bxm partials.</figcaption>
+  </figure>
+  <div class="bx-doc-links">
+    <a class="bx-doc-link" href="/docs/getting-started">
+      <div class="bx-doc-link-title">Getting Started</div>
+      <div class="bx-doc-link-desc">Install, write your first app, and run it — with and without a config file.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/config">
+      <div class="bx-doc-link-title">Configuration</div>
+      <div class="bx-doc-link-desc">boxlang.json, --bx-config, environment variables, trust proxy.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/routing">
+      <div class="bx-doc-link-title">Routing</div>
+      <div class="bx-doc-link-desc">Route params, wildcards, param() callbacks, and mountable routers.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/middleware">
+      <div class="bx-doc-link-title">Middleware</div>
+      <div class="bx-doc-link-desc">app.use(), execution order, and the built-in middleware set.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/request-response">
+      <div class="bx-doc-link-title">Request &amp; Response</div>
+      <div class="bx-doc-link-desc">The full req.* and res.* API reference.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/views">
+      <div class="bx-doc-link-title">Views &amp; Templates</div>
+      <div class="bx-doc-link-desc">res.render(), .bxm templates, Handlebars, and partials.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/sessions">
+      <div class="bx-doc-link-title">Sessions</div>
+      <div class="bx-doc-link-desc">Cookie-based sessions with req.session.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/static-files">
+      <div class="bx-doc-link-title">Static Files &amp; Uploads</div>
+      <div class="bx-doc-link-desc">Serving static assets and handling multipart uploads.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/errors">
+      <div class="bx-doc-link-title">Error Handling</div>
+      <div class="bx-doc-link-desc">Default error behavior and building your own themed error pages.</div>
+    </a>
+    <a class="bx-doc-link" href="/docs/lifecycle">
+      <div class="bx-doc-link-title">Process Lifecycle</div>
+      <div class="bx-doc-link-desc">reloadOnChange, graceful shutdown, and port-conflict handling.</div>
+    </a>
+  </div>
+</section>
+</bx:output>
+<bx:include template="partials/_foot.bxm">

@@ -1,0 +1,32 @@
+<bx:include template="../partials/_head.bxm">
+<bx:output>
+<h1>Sessions</h1>
+<p class="bx-docs-lede">Cookie-based sessions via req.session.</p>
+
+<h2>Enabling sessions</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressSession() )</code></pre>
+<p>Once registered, every request gets a session — a new one is created and a session cookie set if the request didn't already carry one.</p>
+
+<h2>Reading and writing session data</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/visit-count", ( req, res ) => {
+    req.session.views = ( req.session.views ?: 0 ) + 1
+    res.json( { views: req.session.views, sessionID: req.sessionID } )
+} )</code></pre>
+<p><code class="bx-inline">req.session</code> is a plain struct — read and write it directly. It's persisted server-side and keyed by <code class="bx-inline">req.sessionID</code>, which is also readable directly for logging or debugging.</p>
+
+<h2>Ending a session</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/logout", ( req, res ) => {
+    req.destroySession()
+    res.json( { loggedOut: true } )
+} )</code></pre>
+<p><code class="bx-inline">req.destroySession()</code> clears the stored session data and expires the session cookie on the client (<code class="bx-inline">Max-Age=0</code>) — the next request starts a fresh session.</p>
+
+<h2>The session cookie</h2>
+<p>The session cookie is named <code class="bx-inline">connect.sid</code>, matching Express's own default — familiar if you're coming from Node. It's set with <code class="bx-inline">HttpOnly</code> by default, the same as <code class="bx-inline">res.cookie()</code>.</p>
+
+<div class="bx-docs-pager">
+  <a href="/docs/views"><span>Previous</span>← Views &amp; Templates</a>
+  <a href="/docs/static-files"><span>Next</span>Static Files &amp; Uploads →</a>
+</div>
+</bx:output>
+<bx:include template="../partials/_foot.bxm">

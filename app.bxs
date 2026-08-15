@@ -1,68 +1,140 @@
 app = boxExpress()
 
-app.use( boxExpressJSON() )        // parses application/json bodies into req.body
-app.use( boxExpressUrlencoded() )  // parses application/x-www-form-urlencoded bodies
-app.use( boxExpressStatic( expandPath( "./public" ) ) )
+app.use( boxExpressJSON() )
+app.use( boxExpressUrlencoded() )
 app.use( boxExpressSession() )
-
+app.use( boxExpressStatic( expandPath( "./public" ) ) )
 app.set( "views", expandPath( "./views" ) )
 
-// Strips HTML/script markup from untrusted input while leaving plain-text
-// punctuation (&, ", <) intact, since messages are rendered via textContent.
-function cleanInput( str ) {
-	return trim( decodeForHTML( getSafeHTML( str, { basePolicy: "none" } ) ) )
-}
+app.set( "reloadOnChange", true )
+app.set("env", "development")
 
-// These are values are valid for the demo app only.
-pulsely = {
-	appKey: "bp_9050d5d84af54f0aa035c39a",
-	appId: "41949e4270b84cf1a7e7912e8a1984a0",
-	appSecret: "a6655d857faf4f76b3c0308eb2474c105f809802b5ee4d4aaeb729ec1c76f0c7",
-	baseUrl: "https://pulsely.dev"
-}
+// Shared sidebar nav for every /docs/* page — see views/partials/_head.bxm.
+docsNav = [
+    {
+        label: "Getting Started",
+        items: [
+            { label: "Getting Started", href: "/docs/getting-started" },
+            { label: "Configuration", href: "/docs/config" }
+        ]
+    },
+    {
+        label: "Core Concepts",
+        items: [
+            { label: "Routing", href: "/docs/routing" },
+            { label: "Middleware", href: "/docs/middleware" },
+            { label: "Request & Response", href: "/docs/request-response" },
+            { label: "Views & Templates", href: "/docs/views" }
+        ]
+    },
+    {
+        label: "Features",
+        items: [
+            { label: "Sessions", href: "/docs/sessions" },
+            { label: "Static Files & Uploads", href: "/docs/static-files" },
+            { label: "Error Handling", href: "/docs/errors" }
+        ]
+    },
+    {
+        label: "Operations",
+        items: [
+            { label: "Process Lifecycle", href: "/docs/lifecycle" }
+        ]
+    }
+]
 
-app.get( "/", ( req, res ) => {
-	res.render( "index", { title: "Simple Chat", pulselyKey: pulsely.appKey } )
+app.get("/", ( req, res ) => {
+    res.render( "home", { title: "Home", docsMode: false, currentPath: req.path } )
+})
+
+app.get( "/docs/getting-started", ( req, res ) => {
+    res.render( "docs/getting-started", { title: "Getting Started", docsMode: true, currentPath: req.path, navGroups: docsNav } )
 } )
 
-app.post( "/chat/send", ( req, res ) => {
-	var user = cleanInput( req.body.user ?: "" )
-	var message = cleanInput( req.body.message ?: "" )
-
-	if ( user == "" ) {
-		user = "Anonymous"
-	}
-	if ( message == "" ) {
-		res.status( 400 ).json( { error: "message is required" } )
-		return
-	}
-
-	var path = "/apps/#pulsely.appId#/events"
-	var body = jsonSerialize( {
-		channel: "chat",
-		event: "message",
-		data: { user: user, message: message, time: dateTimeFormat( now(), "iso8601" ) }
-	} )
-	var timestamp = "#createObject( "java", "java.time.Instant" ).now().getEpochSecond()#"
-	var bodyHash = lCase( hash( body, "SHA-256" ) )
-	var stringToSign = "POST" & char( 10 ) & path & char( 10 ) & timestamp & char( 10 ) & bodyHash
-	var signature = lCase( hmac( stringToSign, pulsely.appSecret, "HmacSHA256" ) )
-
-	bx:http method="POST" charset="utf-8" url="#pulsely.baseUrl##path#" result="pulselyResult" {
-		bx:httpparam type="header" name="Content-Type" value="application/json";
-		bx:httpparam type="header" name="X-Pulsely-Timestamp" value="#timestamp#";
-		bx:httpparam type="header" name="X-Pulsely-Signature" value="#signature#";
-		bx:httpparam type="body" value="#body#";
-	}
-
-	if ( left( pulselyResult.statusCode, 3 ) != "200" ) {
-		res.status( 502 ).json( { error: "failed to publish message", detail: pulselyResult.statusCode } )
-		return
-	}
-
-	res.json( { ok: true } )
+app.get( "/docs/config", ( req, res ) => {
+    res.render( "docs/config", { title: "Configuration", docsMode: true, currentPath: req.path, navGroups: docsNav } )
 } )
 
-app.listen( 3000, ( port ) => {
-	println( "listening on #port#" )
+app.get( "/docs/routing", ( req, res ) => {
+    res.render( "docs/routing", { title: "Routing", docsMode: true, currentPath: req.path, navGroups: docsNav } )
 } )
+
+app.get( "/docs/middleware", ( req, res ) => {
+    res.render( "docs/middleware", { title: "Middleware", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+} )
+
+app.get( "/docs/request-response", ( req, res ) => {
+    res.render( "docs/request-response", { title: "Request & Response", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+} )
+
+app.get( "/docs/views", ( req, res ) => {
+    res.render( "docs/views", { title: "Views & Templates", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+} )
+
+app.get( "/docs/sessions", ( req, res ) => {
+    res.render( "docs/sessions", { title: "Sessions", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+} )
+
+app.get( "/docs/static-files", ( req, res ) => {
+    res.render( "docs/static-files", { title: "Static Files & Uploads", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+} )
+
+app.get( "/docs/errors", ( req, res ) => {
+    res.render( "docs/errors", { title: "Error Handling", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+} )
+
+app.get( "/docs/lifecycle", ( req, res ) => {
+    res.render( "docs/lifecycle", { title: "Process Lifecycle", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+} )
+
+app.get( "/upload", ( req, res ) => {
+    res.render( "upload", { title: "Upload Demo", docsMode: false, currentPath: req.path } )
+} )
+
+app.post(
+    "/upload",
+    boxExpressUpload( { dest: expandPath( "./uploads" ) } ),
+    ( req, res ) => {
+        res.render( "upload", {
+            title: "Upload Demo",
+            docsMode: false,
+            currentPath: req.path,
+            result: {
+                note: req.body.note ?: "",
+                files: req.files.file ?: []
+            }
+        } )
+    }
+)
+
+// Themed 404 — must come after every real route, since it's an unconditional
+// catch-all: whatever hasn't matched by the time dispatch reaches this falls
+// through to it.
+app.use( ( req, res ) => {
+    res.status( 404 ).render( "error", {
+        statusCode: 404,
+        title: "Page Not Found",
+        message: "The page you're looking for doesn't exist or has moved.",
+        path: req.path,
+        accent: "##2563eb",
+        iconPath: "M11 17a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM21 21l-4.35-4.35"
+    } )
+} )
+
+// Themed 500 — a 4-arg handler only runs when a route/middleware throws or
+// calls next(err), same as the framework's own default error handler.
+app.use( ( err, req, res, next ) => {
+    var isDev = app.getSetting( "env" ) == "development"
+    res.status( 500 ).render( "error", {
+        statusCode: 500,
+        title: "Something Went Wrong",
+        message: isDev ? err.message : "An unexpected error occurred. Please try again.",
+        path: "",
+        accent: "##dc2626",
+        iconPath: "M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+    } )
+} )
+
+app.listen(3003, ( port ) => {
+    println( "Server is running on port #port#" )
+})

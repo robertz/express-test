@@ -1,0 +1,36 @@
+<bx:output><!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>#data.title# · BoxLang Express</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Documentation for BoxLang Express, an Express.js-style API for building lightweight HTTP servers in BoxLang.">
+<link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body>
+<nav class="bx-nav">
+  <a class="bx-brand" href="/">
+    <span class="bx-brand-mark">bx</span>
+    BoxLang Express
+  </a>
+  <div class="bx-nav-links">
+    <a href="/"<bx:if data.currentPath eq "/"> class="bx-active"</bx:if>>Home</a>
+    <a href="/docs/getting-started"<bx:if left( data.currentPath, 5 ) eq "/docs"> class="bx-active"</bx:if>>Docs</a>
+    <a href="/upload"<bx:if data.currentPath eq "/upload"> class="bx-active"</bx:if>>Upload Demo</a>
+  </div>
+</nav>
+<bx:if data.docsMode>
+<div class="bx-docs-layout">
+  <aside class="bx-sidebar">
+    <bx:loop array="#data.navGroups#" index="group">
+    <div class="bx-sidebar-group">
+      <h4>#group.label#</h4>
+      <bx:loop array="#group.items#" index="navItem">
+      <a href="#navItem.href#"<bx:if navItem.href eq data.currentPath> class="bx-active"</bx:if>>#navItem.label#</a>
+      </bx:loop>
+    </div>
+    </bx:loop>
+  </aside>
+  <main class="bx-docs-content">
+</bx:if>
+</bx:output>

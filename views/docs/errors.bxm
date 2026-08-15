@@ -1,0 +1,77 @@
+<bx:include template="../partials/_head.bxm">
+<bx:output>
+<h1>Error Handling</h1>
+<p class="bx-docs-lede">The framework's default 404/500 behavior, and how this site overrides it with themed HTML pages.</p>
+
+<h2>Default behavior</h2>
+<p>Out of the box, with no custom error handling registered, the framework responds to both cases with JSON:</p>
+<table class="bx-table">
+  <tr><th>Case</th><th>Default response</th></tr>
+  <tr><td>No route matches</td><td><code class="bx-inline">404</code> — <code class="bx-inline">{ "error": true, "message": "Cannot GET /whatever" }</code></td></tr>
+  <tr><td>A route/middleware throws, uncaught</td><td><code class="bx-inline">500</code> — <code class="bx-inline">{ "error": true, "message": "Internal Server Error" }</code></td></tr>
+</table>
+<p>The 500 body hides the real error message unless <code class="bx-inline">app.set("env", "development")</code> was used — an unhandled exception's message (file paths, driver errors, internal identifiers) would otherwise leak straight to an unauthenticated client. The full message is always logged server-side regardless of this setting.</p>
+
+<h2>Overriding both, with your own HTML</h2>
+<p>Because 404/500 handling is just middleware under the hood, replacing it doesn't need any framework change — register your own after every route. <strong>This is exactly how this site's own error pages are built</strong> — try visiting <a href="/this-page-does-not-exist">a page that doesn't exist</a> to see it live. The relevant code, straight from this app's <code class="bx-inline">app.bxs</code>:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs — app.bxs</span><code>// Themed 404 — must come after every real route, since it's an unconditional
+// catch-all: whatever hasn't matched by the time dispatch reaches this falls
+// through to it.
+app.use( ( req, res ) => {
+    res.status( 404 ).render( "error", {
+        statusCode: 404,
+        title: "Page Not Found",
+        message: "The page you're looking for doesn't exist or has moved.",
+        path: req.path,
+        accent: "####2563eb",
+        iconPath: "M11 17a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM21 21l-4.35-4.35"
+    } )
+} )
+
+// Themed 500 — a 4-arg handler only runs when a route/middleware throws or
+// calls next(err), same as the framework's own default error handler.
+app.use( ( err, req, res, next ) => {
+    var isDev = app.getSetting( "env" ) == "development"
+    res.status( 500 ).render( "error", {
+        statusCode: 500,
+        title: "Something Went Wrong",
+        message: isDev ? err.message : "An unexpected error occurred. Please try again.",
+        path: "",
+        accent: "####dc2626",
+        iconPath: "M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+    } )
+} )</code></pre>
+<p>Both render a single shared <code class="bx-inline">views/error.bxm</code> template (light/dark, accent color per status), keeping the whole thing self-contained in this project — no changes to the framework itself. See <a href="/docs/views">Views &amp; Templates</a> for how <code class="bx-inline">res.render()</code> and view partials work.</p>
+
+<div class="bx-screenshot-pair">
+  <figure class="bx-screenshot">
+    <a href="/this-page-does-not-exist"><img src="/assets/img/screenshots/error-404.png" alt="The themed 404 page: a search icon, '404', 'Page Not Found', and the requested path"></a>
+    <figcaption>404 — try it</figcaption>
+  </figure>
+  <figure class="bx-screenshot">
+    <img src="/assets/img/screenshots/error-500.png" alt="The themed 500 page: a warning triangle, '500', 'Something Went Wrong', and the error message">
+    <figcaption>500 — shown here in development mode, with the real error message</figcaption>
+  </figure>
+</div>
+
+<div class="bx-callout">
+  <strong>Why this only needs app-level middleware</strong>
+  Since a 404 catch-all and a 4-arg error handler are both just ordinary middleware, they compose with everything else in the stack — logging middleware still runs first, sessions are still available in the error page if you want them, and nothing about the framework's own routing or dispatch logic needs to change.
+</div>
+
+<h2>Explicitly forwarding an error</h2>
+<p>Call <code class="bx-inline">next(err)</code> from inside a normal handler or middleware to skip straight to error-handling middleware, same as a thrown exception:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/risky", ( req, res, next ) => {
+    if ( !req.query.token ) {
+        next( { message: "missing token" } )
+        return
+    }
+    res.send( "ok" )
+} )</code></pre>
+
+<div class="bx-docs-pager">
+  <a href="/docs/static-files"><span>Previous</span>← Static Files &amp; Uploads</a>
+  <a href="/docs/lifecycle"><span>Next</span>Process Lifecycle →</a>
+</div>
+</bx:output>
+<bx:include template="../partials/_foot.bxm">

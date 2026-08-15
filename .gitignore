@@ -1,24 +1,17 @@
-# BoxLang / CommandBox
+# Uploaded files (demo route saves here) — keep the directory, ignore its contents
+uploads/*
+!uploads/.gitkeep
+
+# BoxLang
+boxlang_modules/
 .boxlang/
-.engine/
-.artifacts/
-.tmp/
-logs/
-modules/
-WEB-INF/
 
-# Environment / secrets
-.env
-.env.*
-
-# macOS
+# OS
 .DS_Store
+
+# Logs
+*.log
 
 # Editor
 .vscode/*
 !.vscode/settings.json
-.idea/
-
-# Node (in case front-end tooling gets added)
-node_modules/
-npm-debug.log*

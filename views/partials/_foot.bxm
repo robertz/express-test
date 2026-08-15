@@ -1,0 +1,11 @@
+<bx:output>
+<bx:if data.docsMode>
+  </main>
+</div>
+</bx:if>
+<footer class="bx-footer">
+  Built with <a href="/">BoxLang Express</a> — served from this very app via <code class="bx-inline">res.render()</code>.
+</footer>
+</body>
+</html>
+</bx:output>

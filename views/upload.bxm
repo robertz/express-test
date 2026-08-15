@@ -1,0 +1,74 @@
+<bx:include template="partials/_head.bxm">
+<bx:output>
+<section class="bx-hero">
+  <h1>Upload Demo</h1>
+  <p class="bx-tagline">A live example of <code class="bx-inline">boxExpressUpload()</code> — files are saved to <code class="bx-inline">./uploads</code> on this server.</p>
+</section>
+
+<section class="bx-home-section">
+
+<bx:if !isNull( data.result )>
+  <div class="bx-callout">
+    <strong>Upload received</strong>
+    <bx:if arrayLen( data.result.files )>
+      #arrayLen( data.result.files )# file(s) saved to <code class="bx-inline">./uploads</code>.
+    <bx:else>
+      No file was included in that submission — the field name has to be <code class="bx-inline">file</code>.
+    </bx:if>
+  </div>
+
+  <bx:if len( data.result.note ?: "" )>
+  <p>Note field: <code class="bx-inline">#encodeForHTML( data.result.note )#</code></p>
+  </bx:if>
+
+  <bx:if arrayLen( data.result.files )>
+  <table class="bx-table">
+    <tr><th>Field</th><th>Filename</th><th>Content-Type</th><th>Size</th><th>Saved as</th></tr>
+    <bx:loop array="#data.result.files#" index="f">
+    <tr>
+      <td><code class="bx-inline">#encodeForHTML( f.fieldName )#</code></td>
+      <td>#encodeForHTML( f.filename )#</td>
+      <td>#encodeForHTML( f.contentType )#</td>
+      <td>#f.size# bytes</td>
+      <td><code class="bx-inline">#encodeForHTML( f.path )#</code></td>
+    </tr>
+    </bx:loop>
+  </table>
+  </bx:if>
+
+  <p><a href="/upload">← Upload another file</a></p>
+<bx:else>
+
+  <form method="POST" action="/upload" enctype="multipart/form-data" class="bx-upload-form">
+    <label class="bx-upload-field">
+      <span>Note (optional)</span>
+      <input type="text" name="note" placeholder="anything, just to show req.body alongside req.files">
+    </label>
+    <label class="bx-upload-field">
+      <span>File</span>
+      <input type="file" name="file" required>
+    </label>
+    <button type="submit" class="bx-btn bx-btn-primary">Upload</button>
+  </form>
+
+  <h2 class="bx-section-title" style="margin-top:40px;">How this route is built</h2>
+  <pre class="bx-code"><span class="bx-code-label">bxs — app.bxs</span><code>app.post(
+    "/upload",
+    boxExpressUpload( { dest: expandPath( "./uploads" ) } ),
+    ( req, res ) => {
+        res.render( "upload", {
+            title: "Upload Demo",
+            result: {
+                note: req.body.note ?: "",
+                files: req.files.file ?: []
+            }
+        } )
+    }
+)</code></pre>
+  <p>See <a href="/docs/static-files">Static Files &amp; Uploads</a> for the full write-up.</p>
+
+</bx:if>
+
+</section>
+</bx:output>
+<bx:include template="partials/_foot.bxm">

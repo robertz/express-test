@@ -1,0 +1,53 @@
+<bx:include template="../partials/_head.bxm">
+<bx:output>
+<h1>Middleware</h1>
+<p class="bx-docs-lede">app.use(), execution order, and the middleware that ships with the framework.</p>
+
+<h2>Registering middleware</h2>
+<p><code class="bx-inline">app.use(handler)</code> runs a <code class="bx-inline">(req, res, next)</code> function on every request, in registration order, before route handlers:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( ( req, res, next ) => {
+    println( "##req.method## ##req.path##" )
+    next()
+} )</code></pre>
+<p>A handler that doesn't call <code class="bx-inline">next()</code> ends the chain there — nothing after it runs unless the handler itself sends a response. Scope middleware to a path prefix by passing it as the first argument:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( "/api", ( req, res, next ) => {
+    // only runs for requests under /api
+    next()
+} )</code></pre>
+
+<h2>Order matters</h2>
+<p>Middleware and routes share one stack, run in the order they were registered. A middleware registered after all your routes acts as a catch-all — that's exactly how the themed 404 page in <a href="/docs/errors">Error Handling</a> is built.</p>
+
+<h2>Built-in middleware</h2>
+<table class="bx-table">
+  <tr><th>BIF</th><th>Purpose</th></tr>
+  <tr><td><code class="bx-inline">boxExpressJSON()</code></td><td>Parses <code class="bx-inline">application/json</code> request bodies into <code class="bx-inline">req.body</code></td></tr>
+  <tr><td><code class="bx-inline">boxExpressUrlencoded()</code></td><td>Parses <code class="bx-inline">application/x-www-form-urlencoded</code> bodies into <code class="bx-inline">req.body</code></td></tr>
+  <tr><td><code class="bx-inline">boxExpressStatic(dir)</code></td><td>Serves static files from <code class="bx-inline">dir</code>, with ETag/Last-Modified conditional GET support</td></tr>
+  <tr><td><code class="bx-inline">boxExpressSession()</code></td><td>Cookie-based sessions — populates <code class="bx-inline">req.session</code></td></tr>
+  <tr><td><code class="bx-inline">boxExpressUpload(options)</code></td><td>Parses <code class="bx-inline">multipart/form-data</code> — fields into <code class="bx-inline">req.body</code>, files into <code class="bx-inline">req.files</code></td></tr>
+  <tr><td><code class="bx-inline">boxExpressRouter()</code></td><td>Returns a mountable <code class="bx-inline">Router</code> — see <a href="/docs/routing">Routing</a></td></tr>
+</table>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressJSON() )
+app.use( boxExpressUrlencoded() )
+app.use( boxExpressSession() )
+app.use( "/public", boxExpressStatic( expandPath( "./public" ) ) )</code></pre>
+<p>These are opt-in by design — a route that never reads <code class="bx-inline">req.body</code> doesn't pay for body-parsing on every request.</p>
+
+<h2>Error-handling middleware</h2>
+<p>A handler with <strong>four</strong> parameters — <code class="bx-inline">(err, req, res, next)</code> — is treated as error-handling middleware. It's skipped during normal dispatch and only invoked when a route/middleware throws, or explicitly calls <code class="bx-inline">next(err)</code>:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/boom", ( req, res ) => {
+    throw( message = "kaboom", type = "DemoError" )
+} )
+
+app.use( ( err, req, res, next ) => {
+    res.status( 500 ).json( { error: true, message: err.message } )
+} )</code></pre>
+<p>Register error-handling middleware last, after every route — mirroring the built-in default it's overriding. See <a href="/docs/errors">Error Handling</a> for the full picture, including the framework's own default 404/500 behavior.</p>
+
+<div class="bx-docs-pager">
+  <a href="/docs/routing"><span>Previous</span>← Routing</a>
+  <a href="/docs/request-response"><span>Next</span>Request &amp; Response →</a>
+</div>
+</bx:output>
+<bx:include template="../partials/_foot.bxm">

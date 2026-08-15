@@ -1,0 +1,56 @@
+<bx:include template="../partials/_head.bxm">
+<bx:output>
+<h1>Views &amp; Templates</h1>
+<p class="bx-docs-lede">res.render(), the two supported template engines, and sharing layout across pages.</p>
+
+<h2>Setting up a views directory</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "views", expandPath( "./views" ) )</code></pre>
+<p>Every view path passed to <code class="bx-inline">res.render()</code> is resolved against this directory, with a containment check — a view path can't escape it, even if built from user input.</p>
+
+<h2>Two engines, picked by extension</h2>
+<table class="bx-table">
+  <tr><th>Extension</th><th>Engine</th></tr>
+  <tr><td><code class="bx-inline">.bxm</code></td><td>Native BoxLang template — <code class="bx-inline">data</code> is available as a struct, interpolation needs a <code class="bx-inline">&lt;bx:output&gt;</code> block, same as classic CFML <code class="bx-inline">&lt;cfoutput&gt;</code></td></tr>
+  <tr><td><code class="bx-inline">.hbs</code></td><td>Handlebars — <code class="bx-inline">data</code> is the render context directly, so template variables are <code class="bx-inline">{{whatever}}</code></td></tr>
+</table>
+<p>A view name with no extension gets one appended based on <code class="bx-inline">app.set("view engine", ...)</code>, defaulting to <code class="bx-inline">"bxm"</code>.</p>
+
+<h3>.bxm example</h3>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/greet/:name", ( req, res ) => {
+    res.render( "greeting", { name: req.params.name } )
+} )</code></pre>
+<pre class="bx-code"><span class="bx-code-label">html — views/greeting.bxm</span><code>&lt;bx:output&gt;&lt;h1&gt;Hello, ##data.name##!&lt;/h1&gt;&lt;/bx:output&gt;</code></pre>
+
+<h3>.hbs example</h3>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/greet-hbs/:name", ( req, res ) => {
+    res.render( "greeting.hbs", { data: { name: req.params.name, things: [ "a", "b", "c" ] } } )
+} )</code></pre>
+<pre class="bx-code"><span class="bx-code-label">handlebars — views/greeting.hbs</span><code>&lt;h1&gt;Hello, {{data.name}}!&lt;/h1&gt;
+&lt;p&gt;Things: {{##each data.things}}{{this}}{{##unless @last}}, {{/unless}}{{/each}}&lt;/p&gt;</code></pre>
+
+<h2>Sharing layout with partials</h2>
+<p><code class="bx-inline">.bxm</code> templates are just BoxLang, so ordinary <code class="bx-inline">&lt;bx:include&gt;</code> works for shared header/footer/nav — this documentation site is built exactly this way, with every page including the same two partials:</p>
+<pre class="bx-code"><span class="bx-code-label">html — views/docs/some-page.bxm</span><code>&lt;bx:include template="../partials/_head.bxm"&gt;
+&lt;bx:output&gt;
+  &lt;h1&gt;Page content##data.title##&lt;/h1&gt;
+&lt;/bx:output&gt;
+&lt;bx:include template="../partials/_foot.bxm"&gt;</code></pre>
+<p>Included paths resolve relative to the including template's own directory, same as a plain CFML/BoxLang <code class="bx-inline">include</code> — no special wiring from the framework is needed.</p>
+
+<figure class="bx-screenshot">
+  <img src="/assets/img/screenshots/docs-preview.png" alt="A docs page rendered from _head.bxm and _foot.bxm, showing the shared sidebar and nav">
+  <figcaption>This exact page, rendered from the shared <code class="bx-inline">_head.bxm</code>/<code class="bx-inline">_foot.bxm</code> partials.</figcaption>
+</figure>
+
+<h2>Quick debugging without a view</h2>
+<p>For a one-off inspection route, <code class="bx-inline">res.dump()</code> skips views entirely and sends BoxLang's own rich HTML dump of any variable:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/debug", ( req, res ) => {
+    res.dump( { req: req.query, session: req.session } )
+} )</code></pre>
+
+<div class="bx-docs-pager">
+  <a href="/docs/request-response"><span>Previous</span>← Request &amp; Response</a>
+  <a href="/docs/sessions"><span>Next</span>Sessions →</a>
+</div>
+</bx:output>
+<bx:include template="../partials/_foot.bxm">

@@ -1,0 +1,111 @@
+<bx:output><!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>#data.statusCode# — #data.title#</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bx-bg: ##eff4ff;
+    --bx-card: ##ffffff;
+    --bx-text: ##181f32;
+    --bx-muted: ##5b6577;
+    --bx-border: ##dbe3f0;
+    --bx-accent: #data.accent#;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bx-bg: ##181f32;
+      --bx-card: ##242d4a;
+      --bx-text: ##eef2fb;
+      --bx-muted: ##9aa5c4;
+      --bx-border: ##383b75;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bx-bg);
+    color: var(--bx-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 24px;
+  }
+  .bx-error-card {
+    max-width: 460px;
+    width: 100%;
+    background: var(--bx-card);
+    border: 1px solid var(--bx-border);
+    border-radius: 16px;
+    padding: 40px 36px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 12px 28px rgba(0,0,0,.08);
+    text-align: center;
+  }
+  .bx-error-icon {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 18px;
+    color: var(--bx-accent);
+  }
+  .bx-error-code {
+    font-size: 60px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--bx-accent);
+    margin: 0 0 10px;
+  }
+  .bx-error-title {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0 0 10px;
+  }
+  .bx-error-message {
+    color: var(--bx-muted);
+    font-size: 14px;
+    line-height: 1.55;
+    margin: 0 0 20px;
+    word-break: break-word;
+  }
+  .bx-error-path {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    background: var(--bx-bg);
+    border: 1px solid var(--bx-border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: var(--bx-text);
+    margin-bottom: 4px;
+  }
+  .bx-error-home {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--bx-accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .bx-error-home:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="bx-error-card">
+    <svg class="bx-error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="#data.iconPath#"></path>
+    </svg>
+    <p class="bx-error-code">#data.statusCode#</p>
+    <h1 class="bx-error-title">#data.title#</h1>
+    <p class="bx-error-message">#encodeForHTML( data.message )#</p>
+    <bx:if len( data.path ?: "" )>
+    <code class="bx-error-path">#encodeForHTML( data.path )#</code>
+    </bx:if>
+    <br>
+    <a class="bx-error-home" href="/">← Back to home</a>
+  </div>
+</body>
+</html>
+</bx:output>

@@ -1,0 +1,62 @@
+<bx:include template="../partials/_head.bxm">
+<bx:output>
+<h1>Static Files &amp; Uploads</h1>
+<p class="bx-docs-lede">Serving a directory of static assets, sending individual files, and handling multipart uploads.</p>
+
+<h2>Serving a static directory</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( "/public", boxExpressStatic( expandPath( "./public" ) ) )
+// GET /public/logo.png → serves ./public/logo.png</code></pre>
+<p>Mount it with no prefix to serve straight from the site root:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressStatic( expandPath( "./public" ) ) )
+// GET /logo.png → serves ./public/logo.png</code></pre>
+<p>A request for a file that doesn't exist under the served directory falls through to <code class="bx-inline">next()</code> rather than erroring — your other routes (or the default 404) still get a chance to handle it.</p>
+
+<h2>Conditional GET (ETag / 304)</h2>
+<p>Static file responses automatically set <code class="bx-inline">ETag</code> and <code class="bx-inline">Last-Modified</code>, and honor <code class="bx-inline">If-None-Match</code> — a matching request gets a <code class="bx-inline">304 Not Modified</code> with no body, instead of re-sending the file. The same conditional-GET support applies to <code class="bx-inline">res.sendFile()</code>.</p>
+
+<h2>Sending a single file from a route</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/report", ( req, res ) => {
+    res.sendFile( expandPath( "./reports/latest.pdf" ) )
+} )
+
+app.get( "/report/download", ( req, res ) => {
+    res.download( expandPath( "./reports/latest.pdf" ), "report.pdf" )
+} )</code></pre>
+<p><code class="bx-inline">res.download()</code> is <code class="bx-inline">sendFile()</code> with <code class="bx-inline">Content-Disposition: attachment</code> forced, defaulting the downloaded filename to the source file's own name if you don't pass one. A caller-supplied filename is sanitized — quote and control characters are stripped so it can't inject extra <code class="bx-inline">Content-Disposition</code> parameters.</p>
+<p>When building a file path from user input (e.g. a route param), pass <code class="bx-inline">options.root</code> to sandbox it — a resolved path that escapes <code class="bx-inline">root</code> is rejected rather than served:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/files/:name", ( req, res ) => {
+    res.sendFile( req.params.name, { root: expandPath( "./uploads" ) } )
+} )</code></pre>
+
+<h2>Handling uploads</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.post(
+    "/upload",
+    boxExpressUpload( { dest: expandPath( "./uploads" ) } ),
+    ( req, res ) => {
+        res.json( { fields: req.body, files: req.files } )
+    }
+)</code></pre>
+<p><code class="bx-inline">boxExpressUpload()</code> parses a <code class="bx-inline">multipart/form-data</code> request: non-file fields land in <code class="bx-inline">req.body</code> same as any other body parser. <code class="bx-inline">req.files</code> is a struct keyed by field name, each value an <em>array</em> of file structs — a field can carry more than one file — with shape <code class="bx-inline">{ fieldName, filename, contentType, size, buffer, path }</code>. <code class="bx-inline">path</code> is only present when <code class="bx-inline">dest</code> was given; the client-supplied filename is never used to build it, sidestepping path-traversal/collision entirely.</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/uploaded-avatar", ( req, res ) => {
+    res.json( {
+        filename: req.files.avatar[ 1 ].filename,
+        size: req.files.avatar[ 1 ].size,
+        savedAt: req.files.avatar[ 1 ].path
+    } )
+} )</code></pre>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  This app has a working example wired up end to end — the <a href="/upload">Upload Demo</a> page posts to a real <code class="bx-inline">/upload</code> route saving to <code class="bx-inline">./uploads</code>.
+</div>
+
+<figure class="bx-screenshot">
+  <a href="/upload"><img src="/assets/img/screenshots/upload-form.png" alt="The Upload Demo page, with a note field, a file input, and an Upload button"></a>
+  <figcaption>The live Upload Demo — <a href="/upload">try it yourself</a>.</figcaption>
+</figure>
+
+<div class="bx-docs-pager">
+  <a href="/docs/sessions"><span>Previous</span>← Sessions</a>
+  <a href="/docs/errors"><span>Next</span>Error Handling →</a>
+</div>
+</bx:output>
+<bx:include template="../partials/_foot.bxm">
