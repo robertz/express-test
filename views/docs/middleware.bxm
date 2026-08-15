@@ -14,6 +14,16 @@
     // only runs for requests under /api
     next()
 } )</code></pre>
+<p><code class="bx-inline">app.use()</code> also takes more than one handler in a single call — <code class="bx-inline">app.use(mw1, mw2, mw3)</code> registers three separate layers at once, running in the order given:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use(
+    ( req, res, next ) => { println( "##req.method## ##req.path##" ); next() },
+    ( req, res, next ) => { res.set( "X-Powered-By", "BoxLang Express" ); next() }
+)</code></pre>
+<p>The first argument is only ever treated as a mount path when it's a plain string — anything else (a closure, or a mounted <code class="bx-inline">Router</code>) is a target — so <code class="bx-inline">app.use(handler)</code> and <code class="bx-inline">app.use(path, handler)</code> are told apart the same way no matter how many more handlers follow.</p>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  This site's own <code class="bx-inline">app.bxs</code> registers its four top-level middleware — <code class="bx-inline">boxExpressJSON()</code>, <code class="bx-inline">boxExpressUrlencoded()</code>, <code class="bx-inline">boxExpressSession()</code>, and <code class="bx-inline">boxExpressStatic()</code> — from one <code class="bx-inline">app.use()</code> call, rather than four separate ones.
+</div>
 
 <h2>Order matters</h2>
 <p>Middleware and routes share one stack, run in the order they were registered. A middleware registered after all your routes acts as a catch-all — that's exactly how the themed 404 page in <a href="/docs/errors">Error Handling</a> is built.</p>

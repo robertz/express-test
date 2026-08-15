@@ -1,9 +1,13 @@
 app = boxExpress()
 
-app.use( boxExpressJSON() )
-app.use( boxExpressUrlencoded() )
-app.use( boxExpressSession() )
-app.use( boxExpressStatic( expandPath( "./public" ) ) )
+// A single variadic app.use() call, registered in order — see the
+// "Multiple middleware in one call" section on the Middleware page.
+app.use(
+    boxExpressJSON(),
+    boxExpressUrlencoded(),
+    boxExpressSession(),
+    boxExpressStatic( expandPath( "./public" ) )
+)
 app.set( "views", expandPath( "./views" ) )
 
 app.set( "reloadOnChange", true )
