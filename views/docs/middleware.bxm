@@ -36,6 +36,7 @@
   <tr><td><code class="bx-inline">boxExpressStatic(dir)</code></td><td>Serves static files from <code class="bx-inline">dir</code>, with ETag/Last-Modified conditional GET support</td></tr>
   <tr><td><code class="bx-inline">boxExpressSession()</code></td><td>Cookie-based sessions — populates <code class="bx-inline">req.session</code></td></tr>
   <tr><td><code class="bx-inline">boxExpressUpload(options)</code></td><td>Parses <code class="bx-inline">multipart/form-data</code> — fields into <code class="bx-inline">req.body</code>, files into <code class="bx-inline">req.files</code></td></tr>
+  <tr><td><code class="bx-inline">boxExpressHelmet(options)</code></td><td>Sets security-hardening response headers (clickjacking, MIME-sniffing, referrer leakage, etc.) — see below</td></tr>
   <tr><td><code class="bx-inline">boxExpressRouter()</code></td><td>Returns a mountable <code class="bx-inline">Router</code> — see <a href="/docs/routing">Routing</a></td></tr>
 </table>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressJSON() )
@@ -43,6 +44,34 @@ app.use( boxExpressUrlencoded() )
 app.use( boxExpressSession() )
 app.use( "/public", boxExpressStatic( expandPath( "./public" ) ) )</code></pre>
 <p>These are opt-in by design — a route that never reads <code class="bx-inline">req.body</code> doesn't pay for body-parsing on every request.</p>
+
+<h2>Security headers (boxExpressHelmet)</h2>
+<p>Mirrors the npm <a href="https://github.com/helmetjs/helmet" target="_blank" rel="noopener">helmet</a> package's most commonly used defaults, with no configuration needed:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressHelmet() )</code></pre>
+<table class="bx-table">
+  <tr><th>Header</th><th>Default</th></tr>
+  <tr><td><code class="bx-inline">X-Content-Type-Options</code></td><td><code class="bx-inline">nosniff</code></td></tr>
+  <tr><td><code class="bx-inline">X-Frame-Options</code></td><td><code class="bx-inline">SAMEORIGIN</code></td></tr>
+  <tr><td><code class="bx-inline">X-DNS-Prefetch-Control</code></td><td><code class="bx-inline">off</code></td></tr>
+  <tr><td><code class="bx-inline">Referrer-Policy</code></td><td><code class="bx-inline">no-referrer</code></td></tr>
+  <tr><td><code class="bx-inline">X-Permitted-Cross-Domain-Policies</code></td><td><code class="bx-inline">none</code></td></tr>
+  <tr><td><code class="bx-inline">Cross-Origin-Opener-Policy</code></td><td><code class="bx-inline">same-origin</code></td></tr>
+  <tr><td><code class="bx-inline">Cross-Origin-Resource-Policy</code></td><td><code class="bx-inline">same-origin</code></td></tr>
+  <tr><td><code class="bx-inline">Strict-Transport-Security</code></td><td><em>off by default — opt in</em></td></tr>
+  <tr><td><code class="bx-inline">Content-Security-Policy</code></td><td><em>off by default — opt in</em></td></tr>
+</table>
+<p>Every option takes three shapes: omitted (the default above), <code class="bx-inline">false</code> (skip that header entirely), or an exact string to use instead:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressHelmet( {
+    frameOptions: "DENY",              // override the default value
+    referrerPolicy: false,             // skip this header entirely
+    hsts: true,                        // opt in, using the built-in default
+    contentSecurityPolicy: "default-src 'self'"   // opt in, with your own policy
+} ) )</code></pre>
+<p><code class="bx-inline">hsts</code> and <code class="bx-inline">contentSecurityPolicy</code> are opt-in rather than on by default: <code class="bx-inline">Strict-Transport-Security</code> only makes sense over an actually-secure connection — BoxLang Express's own <code class="bx-inline">HttpServer</code> never terminates TLS itself, see <a href="/docs/request-response">Request &amp; Response</a> for <code class="bx-inline">req.secure</code> — so turning it on unconditionally could advertise a guarantee the app doesn't meet. A generic default <code class="bx-inline">Content-Security-Policy</code> is exactly the kind of thing that breaks a real app's own inline scripts/styles or asset domains if applied blindly, so it needs the app's own policy string rather than a one-size-fits-all default.</p>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  This site's own <code class="bx-inline">app.bxs</code> registers <code class="bx-inline">boxExpressHelmet()</code> alongside its other middleware — open your browser's network inspector on any page here and check the response headers.
+</div>
 
 <h2>Error-handling middleware</h2>
 <p>A handler with <strong>four</strong> parameters — <code class="bx-inline">(err, req, res, next)</code> — is treated as error-handling middleware. It's skipped during normal dispatch and only invoked when a route/middleware throws, or explicitly calls <code class="bx-inline">next(err)</code>:</p>

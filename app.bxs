@@ -6,7 +6,8 @@ app.use(
     boxExpressJSON(),
     boxExpressUrlencoded(),
     boxExpressSession(),
-    boxExpressStatic( expandPath( "./public" ) )
+    boxExpressStatic( expandPath( "./public" ) ),
+    boxExpressHelmet()
 )
 app.set( "views", expandPath( "./views" ) )
 
