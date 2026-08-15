@@ -37,6 +37,8 @@
   <tr><td><code class="bx-inline">boxExpressSession()</code></td><td>Cookie-based sessions — populates <code class="bx-inline">req.session</code></td></tr>
   <tr><td><code class="bx-inline">boxExpressUpload(options)</code></td><td>Parses <code class="bx-inline">multipart/form-data</code> — fields into <code class="bx-inline">req.body</code>, files into <code class="bx-inline">req.files</code></td></tr>
   <tr><td><code class="bx-inline">boxExpressHelmet(options)</code></td><td>Sets security-hardening response headers (clickjacking, MIME-sniffing, referrer leakage, etc.) — see below</td></tr>
+  <tr><td><code class="bx-inline">boxExpressCors(options)</code></td><td>Cross-Origin Resource Sharing — sets <code class="bx-inline">Access-Control-*</code> headers and answers preflight requests — see below</td></tr>
+  <tr><td><code class="bx-inline">boxExpressRateLimit(options)</code></td><td>Fixed-window rate limiting, keyed by <code class="bx-inline">req.ip</code> by default — see below</td></tr>
   <tr><td><code class="bx-inline">boxExpressRouter()</code></td><td>Returns a mountable <code class="bx-inline">Router</code> — see <a href="/docs/routing">Routing</a></td></tr>
 </table>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressJSON() )
@@ -71,6 +73,42 @@ app.use( "/public", boxExpressStatic( expandPath( "./public" ) ) )</code></pre>
 <div class="bx-callout">
   <strong>Try it live</strong>
   This site's own <code class="bx-inline">app.bxs</code> registers <code class="bx-inline">boxExpressHelmet()</code> alongside its other middleware — open your browser's network inspector on any page here and check the response headers.
+</div>
+
+<h2>CORS (boxExpressCors)</h2>
+<p>Cross-Origin Resource Sharing, mirroring the npm <a href="https://github.com/expressjs/cors" target="_blank" rel="noopener">cors</a> package's most commonly used options. With no options, reflects whatever <code class="bx-inline">Origin</code> the request sent (or <code class="bx-inline">*</code> if there wasn't one) — permissive by default, same as the npm package:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressCors() )
+app.use( boxExpressCors( { origin: "https://example.com" } ) )
+app.use( boxExpressCors( { origin: [ "https://a.com", "https://b.com" ], credentials: true } ) )</code></pre>
+<table class="bx-table">
+  <tr><th>Option</th><th>Default</th><th>Effect</th></tr>
+  <tr><td><code class="bx-inline">origin</code></td><td><code class="bx-inline">true</code></td><td><code class="bx-inline">true</code> reflects the request's <code class="bx-inline">Origin</code>; <code class="bx-inline">false</code> disables CORS entirely; a string allows only that exact origin; an array allows any origin in the list</td></tr>
+  <tr><td><code class="bx-inline">methods</code></td><td><code class="bx-inline">GET,HEAD,PUT,PATCH,POST,DELETE</code></td><td><code class="bx-inline">Access-Control-Allow-Methods</code> on a preflight response</td></tr>
+  <tr><td><code class="bx-inline">allowedHeaders</code></td><td><em>reflects the preflight's own request</em></td><td><code class="bx-inline">Access-Control-Allow-Headers</code> on a preflight response</td></tr>
+  <tr><td><code class="bx-inline">credentials</code></td><td><code class="bx-inline">false</code></td><td>sets <code class="bx-inline">Access-Control-Allow-Credentials: true</code> when <code class="bx-inline">true</code></td></tr>
+  <tr><td><code class="bx-inline">maxAge</code></td><td><em>none</em></td><td><code class="bx-inline">Access-Control-Max-Age</code> (seconds) on a preflight response</td></tr>
+</table>
+<p>A CORS preflight — an <code class="bx-inline">OPTIONS</code> request carrying <code class="bx-inline">Access-Control-Request-Method</code> — is answered directly by this middleware (<code class="bx-inline">204</code>, the relevant headers, no body) rather than falling through to the router, since nothing would otherwise be registered to handle <code class="bx-inline">OPTIONS</code> on an arbitrary route.</p>
+<div class="bx-callout bx-warn">
+  <strong>No live demo here</strong>
+  This site is entirely same-origin (every page and asset is served from the one BoxLang Express app), so there's no genuine cross-origin request to demonstrate CORS against without inventing one. The examples above are accurate and runnable in your own app — just not wired into this one.
+</div>
+
+<h2>Rate limiting (boxExpressRateLimit)</h2>
+<p>Fixed-window rate limiting, mirroring the npm <a href="https://github.com/express-rate-limit/express-rate-limit" target="_blank" rel="noopener">express-rate-limit</a> package's most commonly used options:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressRateLimit() )                                     // 100 req/min per req.ip
+app.use( "/login", boxExpressRateLimit( { windowMs: 15 * 60000, max: 5 } ) )  // 5 req/15min, scoped to one route</code></pre>
+<p>Sets the draft-standard <code class="bx-inline">RateLimit-Limit</code>/<code class="bx-inline">RateLimit-Remaining</code>/<code class="bx-inline">RateLimit-Reset</code> headers, and responds <code class="bx-inline">429</code> with <code class="bx-inline">Retry-After</code> once a key's count exceeds <code class="bx-inline">max</code> within <code class="bx-inline">windowMs</code>. Fixed window, not a sliding one or a token bucket — a client can get up to 2x <code class="bx-inline">max</code> requests through right at a window boundary, the same trade-off most minimal in-memory rate limiters make in exchange for O(1) bookkeeping per request.</p>
+<p>Each call creates its own counters, so different routes can have independent limits:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.post(
+    "/upload",
+    boxExpressRateLimit( { windowMs: 5 * 60000, max: 10 } ),
+    boxExpressUpload( { dest: expandPath( "./uploads" ) } ),
+    ( req, res ) => { /* ... */ }
+)</code></pre>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  This site's own <a href="/upload">Upload Demo</a> is rate-limited exactly this way — 10 uploads per 5 minutes per IP. Submit the form more than 10 times in a row to see the <code class="bx-inline">429</code>.
 </div>
 
 <h2>Error-handling middleware</h2>
