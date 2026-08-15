@@ -10,7 +10,9 @@ app.set( "reloadOnChange", true )
 app.set("env", "development")
 
 // Shared sidebar nav for every /docs/* page — see views/partials/_head.bxm.
-docsNav = [
+// Set once on app.locals rather than passed to every render() call below —
+// see the "app.locals / res.locals" section on the Views & Templates page.
+app.locals.navGroups = [
     {
         label: "Getting Started",
         items: [
@@ -48,43 +50,43 @@ app.get("/", ( req, res ) => {
 })
 
 app.get( "/docs/getting-started", ( req, res ) => {
-    res.render( "docs/getting-started", { title: "Getting Started", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/getting-started", { title: "Getting Started", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/config", ( req, res ) => {
-    res.render( "docs/config", { title: "Configuration", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/config", { title: "Configuration", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/routing", ( req, res ) => {
-    res.render( "docs/routing", { title: "Routing", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/routing", { title: "Routing", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/middleware", ( req, res ) => {
-    res.render( "docs/middleware", { title: "Middleware", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/middleware", { title: "Middleware", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/request-response", ( req, res ) => {
-    res.render( "docs/request-response", { title: "Request & Response", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/request-response", { title: "Request & Response", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/views", ( req, res ) => {
-    res.render( "docs/views", { title: "Views & Templates", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/views", { title: "Views & Templates", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/sessions", ( req, res ) => {
-    res.render( "docs/sessions", { title: "Sessions", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/sessions", { title: "Sessions", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/static-files", ( req, res ) => {
-    res.render( "docs/static-files", { title: "Static Files & Uploads", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/static-files", { title: "Static Files & Uploads", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/errors", ( req, res ) => {
-    res.render( "docs/errors", { title: "Error Handling", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/errors", { title: "Error Handling", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/lifecycle", ( req, res ) => {
-    res.render( "docs/lifecycle", { title: "Process Lifecycle", docsMode: true, currentPath: req.path, navGroups: docsNav } )
+    res.render( "docs/lifecycle", { title: "Process Lifecycle", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/upload", ( req, res ) => {

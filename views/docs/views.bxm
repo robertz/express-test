@@ -42,6 +42,23 @@
   <figcaption>This exact page, rendered from the shared <code class="bx-inline">_head.bxm</code>/<code class="bx-inline">_foot.bxm</code> partials.</figcaption>
 </figure>
 
+<h2>app.locals / res.locals</h2>
+<p>Two plain structs merged into every <code class="bx-inline">render()</code> call's data, so values a route doesn't set explicitly — a site name, the current user, shared nav data — don't have to be threaded through every single <code class="bx-inline">res.render()</code> call by hand. <code class="bx-inline">app.locals</code> is set once, application-wide; <code class="bx-inline">res.locals</code> is set per request (typically from middleware) and only lives for that one request/response cycle. Precedence, low to high: <code class="bx-inline">app.locals</code>, then <code class="bx-inline">res.locals</code> (overriding <code class="bx-inline">app.locals</code>), then whatever you pass as <code class="bx-inline">render()</code>'s own <code class="bx-inline">data</code> argument (overriding both):</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.locals.siteName = "My Site"
+
+app.use( ( req, res, next ) => {
+    res.locals.user = req.session.user ?: "guest"
+    next()
+} )
+
+app.get( "/", ( req, res ) => {
+    res.render( "home", {} )   // views/home.bxm sees data.siteName and data.user
+} )</code></pre>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  This documentation site's own nav sidebar is exactly this pattern — <code class="bx-inline">app.locals.navGroups</code> is set once in <code class="bx-inline">app.bxs</code>, and every <code class="bx-inline">/docs/*</code> route renders without passing it explicitly.
+</div>
+
 <h2>Quick debugging without a view</h2>
 <p>For a one-off inspection route, <code class="bx-inline">res.dump()</code> skips views entirely and sends BoxLang's own rich HTML dump of any variable:</p>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/debug", ( req, res ) => {

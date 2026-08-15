@@ -14,6 +14,12 @@
 <h2>Conditional GET (ETag / 304)</h2>
 <p>Static file responses automatically set <code class="bx-inline">ETag</code> and <code class="bx-inline">Last-Modified</code>, and honor <code class="bx-inline">If-None-Match</code> — a matching request gets a <code class="bx-inline">304 Not Modified</code> with no body, instead of re-sending the file. The same conditional-GET support applies to <code class="bx-inline">res.sendFile()</code>.</p>
 
+<h2>Range requests (partial content)</h2>
+<p>Both static file serving and <code class="bx-inline">res.sendFile()</code>/<code class="bx-inline">download()</code> honor a <code class="bx-inline">Range</code> request header and respond <code class="bx-inline">206 Partial Content</code> with just the requested slice — what makes video/audio scrubbing and resumable downloads work, since the client doesn't have to (re-)download the whole file to seek or resume. Every file response sets <code class="bx-inline">Accept-Ranges: bytes</code>, even a full <code class="bx-inline">200</code>, so a client knows it can send a <code class="bx-inline">Range</code> request on a later one:</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>curl -H "Range: bytes=0-1023" localhost:3000/public/video.mp4
+## -&gt; 206, Content-Range: bytes 0-1023/&lt;total&gt;, body is just those 1024 bytes</code></pre>
+<p>A range starting beyond the file's size gets a <code class="bx-inline">416 Range Not Satisfiable</code> with <code class="bx-inline">Content-Range: bytes */&lt;total&gt;</code> and no body. Two things are out of scope, the trade-off most minimal static-file servers make: a request naming more than one range falls back to a full <code class="bx-inline">200</code> response instead of a <code class="bx-inline">multipart/byteranges</code> reply, and <code class="bx-inline">If-Range</code> (a conditional range against a validator) isn't supported — a <code class="bx-inline">Range</code> request is always attempted regardless of freshness.</p>
+
 <h2>Sending a single file from a route</h2>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/report", ( req, res ) => {
     res.sendFile( expandPath( "./reports/latest.pdf" ) )

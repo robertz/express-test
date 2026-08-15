@@ -19,6 +19,13 @@ app.all( "/ping", ( req, res ) => res.send( "matched: " & req.method ) )</code><
     res.json( { id: req.params.id } )
 } )
 // GET /users/42 → { "id": "42" }</code></pre>
+<p>A trailing <code class="bx-inline">:name?</code> marks the last param as optional:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/users/:id?", ( req, res ) => {
+    res.json( { id: req.params.id ?: "(all users)" } )
+} )
+// GET /users/42 → { "id": "42" }
+// GET /users     → { "id": "(all users)" }</code></pre>
+<p>Same restriction as the <code class="bx-inline">*</code> wildcard below: an optional param is only supported as the <em>final</em> path segment — <code class="bx-inline">/a/:id?/b</code> throws at registration time, since matching one anywhere else would need real backtracking this router doesn't implement.</p>
 
 <h2>Wildcards</h2>
 <p>A trailing <code class="bx-inline">*</code> segment matches any remaining path:</p>
