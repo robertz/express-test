@@ -131,6 +131,101 @@ app.get( "/form", ( req, res ) => {
   This site's own <a href="/upload">Upload Demo</a> form carries a real <code class="bx-inline">_csrf</code> hidden field, validated by <code class="bx-inline">boxExpressCsrf()</code> — registered <em>after</em> <code class="bx-inline">boxExpressUpload()</code> on that route specifically, since it needs <code class="bx-inline">req.body._csrf</code>, which the multipart parser is what populates. Open dev tools, edit or remove the hidden field's value, and submit — you'll get a <code class="bx-inline">403</code> instead of the upload going through.
 </div>
 
+<h2>Writing your own middleware: a Google OAuth example</h2>
+<p>Everything above is a BIF that ships with the framework, but a middleware "layer" is just a <code class="bx-inline">(req, res, next)</code> function — nothing stops you from writing your own. As a worked example, here's a small Google OAuth 2.0 login flow built entirely out of the pieces already on this page: <code class="bx-inline">req.session</code> from <code class="bx-inline">boxExpressSession()</code>, <code class="bx-inline">res.redirect()</code>, and the same <code class="bx-inline">state</code>-parameter CSRF check <code class="bx-inline">boxExpressCsrf()</code> uses for forms, applied here to the OAuth redirect instead.</p>
+<p>Rather than one factory returning one handler, this one returns a <em>struct</em> of three related handlers — a pattern worth using any time a feature needs more than one route to work together:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs — googleAuth.bx</span><code>function googleAuth( options ) {
+    var clientId     = options.clientId
+    var clientSecret = options.clientSecret
+    var redirectUri  = options.redirectUri
+    var scope        = options.scope ?: "openid email profile"
+
+    return {
+        // GET /auth/google — kick off the flow
+        login: ( req, res ) => {
+            var state = createUUID()
+            req.session.oauthState = state   // validated in callback, below
+            var authUrl = "https://accounts.google.com/o/oauth2/v2/auth"
+                & "?client_id=" & urlEncodedFormat( clientId )
+                & "&redirect_uri=" & urlEncodedFormat( redirectUri )
+                & "&response_type=code"
+                & "&scope=" & urlEncodedFormat( scope )
+                & "&state=" & urlEncodedFormat( state )
+            res.redirect( authUrl )
+        },
+
+        // GET /auth/google/callback — Google redirects back here
+        callback: ( req, res ) => {
+            if ( ( req.query.state ?: "" ) != ( req.session.oauthState ?: "" ) ) {
+                return res.status( 403 ).send( "Invalid OAuth state - possible CSRF attempt" )
+            }
+            var code = req.query.code ?: ""
+            if ( !len( code ) ) {
+                return res.status( 400 ).send( "Missing code" )
+            }
+
+            var httpClient = createObject( "java", "java.net.http.HttpClient" ).newHttpClient()
+
+            var tokenRequest = createObject( "java", "java.net.http.HttpRequest" )
+                .newBuilder()
+                .uri( createObject( "java", "java.net.URI" ).create( "https://oauth2.googleapis.com/token" ) )
+                .header( "Content-Type", "application/x-www-form-urlencoded" )
+                .POST( createObject( "java", "java.net.http.HttpRequest$BodyPublishers" ).ofString(
+                    "code=" & urlEncodedFormat( code )
+                    & "&client_id=" & urlEncodedFormat( clientId )
+                    & "&client_secret=" & urlEncodedFormat( clientSecret )
+                    & "&redirect_uri=" & urlEncodedFormat( redirectUri )
+                    & "&grant_type=authorization_code"
+                ) )
+                .build()
+            var tokenData = JSONDeserialize(
+                httpClient.send( tokenRequest, createObject( "java", "java.net.http.HttpResponse$BodyHandlers" ).ofString() ).body()
+            )
+
+            var userRequest = createObject( "java", "java.net.http.HttpRequest" )
+                .newBuilder()
+                .uri( createObject( "java", "java.net.URI" ).create( "https://www.googleapis.com/oauth2/v3/userinfo" ) )
+                .header( "Authorization", "Bearer " & tokenData.access_token )
+                .GET()
+                .build()
+            var profile = JSONDeserialize(
+                httpClient.send( userRequest, createObject( "java", "java.net.http.HttpResponse$BodyHandlers" ).ofString() ).body()
+            )
+
+            req.session.user = { email: profile.email, name: profile.name, picture: profile.picture }
+            structDelete( req.session, "oauthState" )
+            res.redirect( "/" )
+        },
+
+        // route guard — drop this in front of anything that needs a logged-in user
+        requireAuth: ( req, res, next ) => {
+            if ( isNull( req.session.user ) ) {
+                return res.redirect( "/auth/google" )
+            }
+            next()
+        }
+    }
+}</code></pre>
+<p>Wiring it up in <code class="bx-inline">app.bxs</code> — three lines, since the factory above already did the work:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs — app.bxs</span><code>var systemUtil = createObject( "java", "java.lang.System" )   // no native getEnv() BIF — see below
+
+var auth = googleAuth( {
+    clientId: systemUtil.getenv( "GOOGLE_CLIENT_ID" ),
+    clientSecret: systemUtil.getenv( "GOOGLE_CLIENT_SECRET" ),
+    redirectUri: "https://yourapp.com/auth/google/callback"
+} )
+
+app.get( "/auth/google", auth.login )
+app.get( "/auth/google/callback", auth.callback )
+app.get( "/dashboard", auth.requireAuth, ( req, res ) => {
+    res.render( "dashboard", { user: req.session.user } )
+} )</code></pre>
+<p>BoxLang has no native <code class="bx-inline">getEnv()</code> BIF — confirmed directly, it errors with <code class="bx-inline">Function 'getEnv' not found</code> — so reading an environment variable means going through Java interop: <code class="bx-inline">createObject("java","java.lang.System").getenv("VAR_NAME")</code>, or <code class="bx-inline">server.system.environment.VAR_NAME</code>. Either reads whatever a <code class="bx-inline">.env</code> file supplied at startup — see <a href="/docs/config">Configuration</a>.</p>
+<div class="bx-callout bx-warn">
+  <strong>No live demo here</strong>
+  This flow was verified end to end against a local stand-in for Google's token/userinfo endpoints (login → redirect → callback → state check → token exchange → profile fetch → <code class="bx-inline">req.session.user</code>, plus the 403 on a mismatched <code class="bx-inline">state</code> and 400 on a missing <code class="bx-inline">code</code>) — but it isn't wired into this site, since that would need a real Google OAuth client registered against this domain. The code above is exactly what was tested, just pointed at Google's real endpoints instead of the stand-in.
+</div>
+
 <h2>Error-handling middleware</h2>
 <p>A handler with <strong>four</strong> parameters — <code class="bx-inline">(err, req, res, next)</code> — is treated as error-handling middleware. It's skipped during normal dispatch and only invoked when a route/middleware throws, or explicitly calls <code class="bx-inline">next(err)</code>:</p>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/boom", ( req, res ) => {
