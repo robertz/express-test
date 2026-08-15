@@ -27,11 +27,15 @@
 <ol>
   <li>A file change is detected and debounced (150ms).</li>
   <li><code class="bx-inline">[reloadOnChange] &lt;path&gt; changed — restarting...</code> is logged.</li>
-  <li>The current server is closed (releasing the port).</li>
-  <li>The exact original JVM invocation is replayed via <code class="bx-inline">ProcessHandle.current()</code> — this works whatever the entry script is named and however it was launched (bvm-managed <code class="bx-inline">boxlang</code>, a raw <code class="bx-inline">java -jar</code>, custom JVM flags), rather than assuming a fixed <code class="bx-inline">boxlang &lt;script&gt;</code> shape.</li>
-  <li>The old process exits; the new one binds the same port with the updated code.</li>
+  <li>The replacement process is launched <em>first</em>, replaying the exact original JVM invocation via <code class="bx-inline">ProcessHandle.current()</code> — this works whatever the entry script is named and however it was launched (bvm-managed <code class="bx-inline">boxlang</code>, a raw <code class="bx-inline">java -jar</code>, custom JVM flags), rather than assuming a fixed <code class="bx-inline">boxlang &lt;script&gt;</code> shape.</li>
+  <li>Only once that launch succeeds is the current server closed (releasing the port) and the old process exits — the new one binds the same port with the updated code.</li>
 </ol>
 <p>Registration is a one-time recursive snapshot taken at startup — a directory created <em>after</em> the server starts won't be picked up until the next restart. That's an accepted limitation for a dev-only convenience feature.</p>
+
+<div class="bx-callout">
+  <strong>A failed restart doesn't take the server down with it</strong>
+  Launching the replacement is attempted before the current server is closed, not after. If it fails for any reason — a bad reconstructed command, a transient OS resource limit — that's caught and logged (<code class="bx-inline">[reloadOnChange] Failed to restart: ...</code>) instead of crashing, and the current server is left running rather than dying with nothing left to replace it.
+</div>
 
 <div class="bx-callout bx-warn">
   <strong>Orphaned processes from before graceful shutdown was hardened</strong>
