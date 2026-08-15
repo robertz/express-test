@@ -14,6 +14,9 @@
 <h2>Conditional GET (ETag / 304)</h2>
 <p>Static file responses automatically set <code class="bx-inline">ETag</code> and <code class="bx-inline">Last-Modified</code>, and honor <code class="bx-inline">If-None-Match</code> — a matching request gets a <code class="bx-inline">304 Not Modified</code> with no body, instead of re-sending the file. The same conditional-GET support applies to <code class="bx-inline">res.sendFile()</code>.</p>
 
+<h2>HEAD requests</h2>
+<p><code class="bx-inline">HEAD /public/logo.png</code> returns the same headers a <code class="bx-inline">GET</code> would — <code class="bx-inline">Content-Type</code>, <code class="bx-inline">Content-Length</code>, <code class="bx-inline">ETag</code>, <code class="bx-inline">Last-Modified</code> — with no response body. See <a href="/docs/routing">Routing</a> for how <code class="bx-inline">HEAD</code> works across the framework generally.</p>
+
 <h2>Range requests (partial content)</h2>
 <p>Both static file serving and <code class="bx-inline">res.sendFile()</code>/<code class="bx-inline">download()</code> honor a <code class="bx-inline">Range</code> request header and respond <code class="bx-inline">206 Partial Content</code> with just the requested slice — what makes video/audio scrubbing and resumable downloads work, since the client doesn't have to (re-)download the whole file to seek or resume. Every file response sets <code class="bx-inline">Accept-Ranges: bytes</code>, even a full <code class="bx-inline">200</code>, so a client knows it can send a <code class="bx-inline">Range</code> request on a later one:</p>
 <pre class="bx-code"><span class="bx-code-label">bash</span><code>curl -H "Range: bytes=0-1023" localhost:3000/public/video.mp4
