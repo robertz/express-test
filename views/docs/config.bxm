@@ -38,6 +38,16 @@
 }</code></pre>
 <p>Other built-in placeholders available in any BoxLang config file: <code class="bx-inline">${boxlang-home}</code>, <code class="bx-inline">${user-home}</code>, <code class="bx-inline">${user-dir}</code>, and <code class="bx-inline">${java-temp}</code>.</p>
 
+<h2>.env files</h2>
+<p>Unlike <code class="bx-inline">boxlang.json</code>, a <code class="bx-inline">.env</code> file in the current working directory <strong>is</strong> loaded automatically — no flag needed. This was confirmed directly: a script run from a directory containing a <code class="bx-inline">.env</code> with <code class="bx-inline">MY_VAR=value</code> saw it via <code class="bx-inline">System.getenv("MY_VAR")</code>; the same script run one directory over, with no <code class="bx-inline">.env</code> present, didn't.</p>
+<pre class="bx-code"><span class="bx-code-label">plain — .env</span><code>MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=myapp
+MYSQL_USERNAME=root
+MYSQL_PASSWORD=super-secret</code></pre>
+<p>This is what the <code class="bx-inline">${env.VARIABLE_NAME:defaultValue}</code> placeholders above actually resolve against day to day — a <code class="bx-inline">.env</code> file per environment (gitignored, never committed) is the natural way to supply real values locally without exporting shell variables or hardcoding secrets into <code class="bx-inline">boxlang.json</code> itself.</p>
+<p>A real OS environment variable of the same name always wins over the <code class="bx-inline">.env</code> file's value — confirmed the same way, by setting <code class="bx-inline">MY_VAR</code> in the shell before running a script whose <code class="bx-inline">.env</code> set a different value for it, and seeing the shell's value win. <code class="bx-inline">.env</code> only fills in what isn't already set, same as the standard dotenv convention everywhere else — safe to layer under CI/production environments that already export real values.</p>
+
 <h2>Adding other modules</h2>
 <p>BoxLang Express is itself just a BoxLang module — the same module system installs a broader ecosystem of modules beyond it. The datasource example above is a good example of where this comes up: things like additional JDBC driver support, security/encoding helpers, or a CFML compatibility layer all ship as separate, opt-in modules rather than being baked into the runtime.</p>
 <p>The standard tool for this is <a href="https://commandbox.ortusbooks.com/" target="_blank" rel="noopener">CommandBox</a> (the <code class="bx-inline">box</code> CLI) — it talks to <a href="https://forgebox.io" target="_blank" rel="noopener">ForgeBox</a>, the BoxLang/CFML package registry:</p>
