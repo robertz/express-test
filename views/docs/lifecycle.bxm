@@ -42,6 +42,11 @@
   A process that never received the shutdown hook fix could survive a Ctrl-C entirely — still holding resources, invisible unless you went looking (<code class="bx-inline">ps aux | grep boxlang</code>, or checking whether a supposedly-free port responds). If a "phantom" dev server ever behaves this way, sending <code class="bx-inline">SIGTERM</code> directly (<code class="bx-inline">kill -TERM &lt;pid&gt;</code>) is the reliable fallback.
 </div>
 
+<div class="bx-callout bx-warn">
+  <strong>reloadOnChange doesn't survive being PID 1 in a container</strong>
+  Step 4 above — close the current server, let the old process exit — is exactly what breaks when that process <em>is</em> the container's PID 1 (e.g. an entrypoint that ends in <code class="bx-inline">exec boxlang app.bxs</code>). The replacement is a <em>child</em> process, not a true exec-replacement, so when the old PID 1 exits, Docker tears down the whole container immediately — regardless of whether the replacement had already started successfully. Confirmed directly against this site's own <a href="https://github.com/robertz/express-test/blob/main/docker-compose.yml">docker-compose.yml</a>: editing any bind-mounted file (not just <code class="bx-inline">app.bxs</code> — the watcher covers the whole working directory) killed the container outright. <code class="bx-inline">init: true</code> (Docker's built-in tini) does <strong>not</strong> fix this either — tini only waits on its one direct child and exits right along with it, rather than adopting the orphaned replacement. What actually works is <code class="bx-inline">restart: unless-stopped</code> on the container: Compose notices the exit and boots a fresh container through the same entrypoint. It gets you the same end result — the edit shows up — but by fully restarting the container (and re-running any boot-time module install) rather than the fast in-process handoff described above.
+</div>
+
 <div class="bx-docs-pager">
   <a href="/docs/errors"><span>Previous</span>← Error Handling</a>
   <span></span>
