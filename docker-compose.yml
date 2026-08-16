@@ -1,0 +1,50 @@
+# Local dev only — see Dockerfile for the boot-time module install this
+# builds on. app.bxs already has reloadOnChange + env=development on, so
+# editing a bind-mounted file below restarts the server inside the
+# container automatically; no rebuild needed for anything except the
+# Dockerfile itself.
+#
+# Usage:
+#   docker compose up --build   (first run, or after changing the Dockerfile)
+#   docker compose up           (every time after that)
+
+services:
+  web:
+    build: .
+    # reloadOnChange (on in app.bxs) restarts BoxLang by spawning a *child*
+    # process and exiting the old one — fine on a normal machine (the child
+    # gets reparented to the OS's own init and keeps running), but the
+    # entrypoint's `exec boxlang app.bxs` makes that old process PID 1 in
+    # the container, and PID 1 exiting tears down the whole container
+    # instantly regardless of what it spawned first.
+    #
+    # `init: true` (Docker's built-in tini) does NOT fix this — tried it and
+    # confirmed directly: tini only waits on its one direct child and exits
+    # right along with it, it doesn't wait for orphaned grandchildren. Since
+    # FileWatcher watches the whole working directory (not just .bx/.bxs —
+    # confirmed a plain view-template edit triggers the same restart),
+    # *any* bind-mounted file edit kills the container this way. `restart:
+    # unless-stopped` is what actually gives a working edit-and-reload loop:
+    # Compose brings the container straight back up, re-running the
+    # entrypoint (including the ForgeBox install — a few seconds slower
+    # than an in-process reload, but automatic).
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      BOXLANG_MODULES: boxlang-express
+    volumes:
+      # App source — edited on the host, picked up by reloadOnChange inside
+      # the container. Individually mounted (not the whole /app) so this
+      # doesn't shadow boxlang_modules/, which the entrypoint populates at
+      # container start.
+      #
+      # No volume for boxlang_modules/ itself: the entrypoint always
+      # reinstalls boxlang-express on every boot (intentionally floats to
+      # latest, not pinned — see docker-entrypoint.sh), so caching that
+      # directory across restarts wouldn't skip anything anyway, since it
+      # gets overwritten every time regardless.
+      - ./app.bxs:/app/app.bxs
+      - ./views:/app/views
+      - ./public:/app/public
+      - ./uploads:/app/uploads
