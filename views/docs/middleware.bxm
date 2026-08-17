@@ -207,11 +207,9 @@ app.get( "/form", ( req, res ) => {
     }
 }</code></pre>
 <p>Wiring it up in <code class="bx-inline">app.bxs</code> — three lines, since the factory above already did the work:</p>
-<pre class="bx-code"><span class="bx-code-label">bxs — app.bxs</span><code>var systemUtil = createObject( "java", "java.lang.System" )   // no native getEnv() BIF — see below
-
-var auth = googleAuth( {
-    clientId: systemUtil.getenv( "GOOGLE_CLIENT_ID" ),
-    clientSecret: systemUtil.getenv( "GOOGLE_CLIENT_SECRET" ),
+<pre class="bx-code"><span class="bx-code-label">bxs — app.bxs</span><code>var auth = googleAuth( {
+    clientId: getSystemSetting( "GOOGLE_CLIENT_ID" ),
+    clientSecret: getSystemSetting( "GOOGLE_CLIENT_SECRET" ),
     redirectUri: "https://yourapp.com/auth/google/callback"
 } )
 
@@ -220,7 +218,7 @@ app.get( "/auth/google/callback", auth.callback )
 app.get( "/dashboard", auth.requireAuth, ( req, res ) => {
     res.render( "dashboard", { user: req.session.user } )
 } )</code></pre>
-<p>BoxLang has no native <code class="bx-inline">getEnv()</code> BIF — confirmed directly, it errors with <code class="bx-inline">Function 'getEnv' not found</code> — so reading an environment variable means going through Java interop: <code class="bx-inline">createObject("java","java.lang.System").getenv("VAR_NAME")</code>, or <code class="bx-inline">server.system.environment.VAR_NAME</code>. Either reads whatever a <code class="bx-inline">.env</code> file supplied at startup — see <a href="/docs/config">Configuration</a>.</p>
+<p><code class="bx-inline">getSystemSetting( name, defaultValue )</code> is BoxLang's native BIF for exactly this — confirmed directly, it reads both real environment variables and JVM system properties (whichever's set), and picks up whatever a <code class="bx-inline">.env</code> file supplied at startup the same as a real shell-exported variable would. Throws if the variable isn't set and no <code class="bx-inline">defaultValue</code> is given — pass one (e.g. <code class="bx-inline">getSystemSetting( "GOOGLE_CLIENT_ID", "" )</code>) to get an empty string back instead. <code class="bx-inline">createObject("java","java.lang.System").getenv("VAR_NAME")</code> also works (that's how the <a href="/docs/config">Configuration</a> page's own <code class="bx-inline">.env</code> behavior was verified), but <code class="bx-inline">getSystemSetting()</code> is the native, idiomatic way to reach for this in application code.</p>
 <div class="bx-callout bx-warn">
   <strong>No live demo here</strong>
   This flow was verified end to end against a local stand-in for Google's token/userinfo endpoints (login → redirect → callback → state check → token exchange → profile fetch → <code class="bx-inline">req.session.user</code>, plus the 403 on a mismatched <code class="bx-inline">state</code> and 400 on a missing <code class="bx-inline">code</code>) — but it isn't wired into this site, since that would need a real Google OAuth client registered against this domain. The code above is exactly what was tested, just pointed at Google's real endpoints instead of the stand-in.
