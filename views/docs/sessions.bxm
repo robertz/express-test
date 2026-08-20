@@ -47,6 +47,19 @@
   This site's own sessions still use the default in-memory store — wiring a JDBC-backed one in means adding a real datasource to this site's config, which isn't done here. The code above is exactly what was verified (against a real Derby-backed cache, <code class="bx-inline">cachePut</code>/<code class="bx-inline">cacheGet</code> round-tripping through an actual table) while building this feature — just not pointed at this site's own session store.
 </div>
 
+<h2>Skipping unnecessary writes (resave, saveUninitialized)</h2>
+<p>By default, this middleware writes to the store on every request — even one that never reads or touches <code class="bx-inline">req.session</code> at all. Free against the default in-memory store, but a real cost against anything out-of-process (a <code class="bx-inline">boxExpressCacheStore()</code>-backed <code class="bx-inline">JDBCStore</code>, Redis, etc.) — a page that only <em>checks</em> whether a visitor happens to be logged in would otherwise force a database write on every single anonymous hit, bots and vulnerability scanners included.</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressSession( {
+    store: myStore,
+    resave: false,             // don't re-save an existing session that wasn't modified
+    saveUninitialized: false   // don't save (or cookie) a new session that wasn't modified
+} ) )</code></pre>
+<p><code class="bx-inline">saveUninitialized: false</code> is the one that matters most: a session created fresh for a request that's never modified during it isn't saved, and isn't given a <code class="bx-inline">Set-Cookie</code> either — there's nothing to remember, and no reason to hand that visitor an identifier. <code class="bx-inline">resave: false</code> skips the store write for an existing session that was loaded but never modified (the cookie is still refreshed either way). A session that <em>is</em> modified — new or pre-existing — is always saved regardless of either option. Both default to <code class="bx-inline">true</code>, matching this middleware's historical always-save behavior.</p>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  This site's own <code class="bx-inline">app.bxs</code> now sets both to <code class="bx-inline">false</code>. Load any plain page here — this one, the homepage, any doc page — and check dev tools: no <code class="bx-inline">Set-Cookie</code>, since nothing on it touches <code class="bx-inline">req.session</code>. Load the <a href="/upload">Upload Demo</a> instead and you will get one — <code class="bx-inline">boxExpressCsrf()</code> mints a token into <code class="bx-inline">req.session</code> on that page, which is a real modification.
+</div>
+
 <h2>The session cookie</h2>
 <p>The session cookie is named <code class="bx-inline">connect.sid</code>, matching Express's own default — familiar if you're coming from Node. It's set with <code class="bx-inline">HttpOnly</code> by default, the same as <code class="bx-inline">res.cookie()</code>.</p>
 

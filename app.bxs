@@ -5,7 +5,7 @@ app = boxExpress()
 app.use(
     boxExpressJSON(),
     boxExpressUrlencoded(),
-    boxExpressSession(),
+    boxExpressSession( { resave: false, saveUninitialized: false } ),
     boxExpressStatic( expandPath( "./public" ), { maxAge: 86400 } ),  // cache assets for 1 day
     boxExpressHelmet()
 )
