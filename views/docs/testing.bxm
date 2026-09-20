@@ -1,0 +1,61 @@
+<bx:include template="../partials/_head.bxm">
+<bx:output>
+<h1>Testing Your App</h1>
+<p class="bx-docs-lede">Run requests through your app in-process with <code class="bx-inline">app.inject()</code> — no port, no HTTP client, no server to start and stop.</p>
+
+<h2>The basics</h2>
+<p><code class="bx-inline">app.inject()</code> pushes one request through the real thing — routing, middleware, handlers, error handling — and hands back what the app produced. It runs on the calling thread and never listens on a port, so a test suite can build a fresh app per test and run hundreds of them in milliseconds:</p>
+<pre class="bx-code"><span class="bx-code-label">bx — a TestBox spec</span><code>it( "creates a user", function() {
+    var app = buildApp()      // your own function that registers routes and middleware
+    var res = app.inject( { method: "POST", url: "/users", body: { name: "ada" } } )
+
+    expect( res.statusCode ).toBe( 201 )
+    expect( res.json().name ).toBe( "ada" )
+    expect( res.header( "content-type" ) ).toInclude( "application/json" )
+} )</code></pre>
+<p>A bare string is a GET: <code class="bx-inline">app.inject( "/health/ready" )</code>.</p>
+
+<h2>Options</h2>
+<table class="bx-table">
+  <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code class="bx-inline">method</code></td><td>Default <code class="bx-inline">"GET"</code>.</td></tr>
+    <tr><td><code class="bx-inline">url</code></td><td>Path plus an optional query string. Encoded characters in the path are decoded, as a real request's would be.</td></tr>
+    <tr><td><code class="bx-inline">query</code></td><td>A struct merged into the query string, URL-encoded. An array value repeats the key.</td></tr>
+    <tr><td><code class="bx-inline">headers</code></td><td>A struct of request headers.</td></tr>
+    <tr><td><code class="bx-inline">body</code></td><td>A struct or array is sent as JSON (with the matching <code class="bx-inline">Content-Type</code>); a string or binary value is sent as-is.</td></tr>
+    <tr><td><code class="bx-inline">form</code></td><td>A struct sent as <code class="bx-inline">application/x-www-form-urlencoded</code>.</td></tr>
+    <tr><td><code class="bx-inline">cookies</code></td><td>A struct sent as the <code class="bx-inline">Cookie</code> header.</td></tr>
+    <tr><td><code class="bx-inline">ip</code></td><td>What <code class="bx-inline">req.ip</code> sees. Default <code class="bx-inline">127.0.0.1</code>.</td></tr>
+    <tr><td><code class="bx-inline">log</code></td><td>Print the usual request log line. Off by default, so a test run isn't buried in it.</td></tr>
+  </tbody>
+</table>
+
+<h2>The response</h2>
+<p>You get back <code class="bx-inline">statusCode</code>, <code class="bx-inline">body</code> (a string), <code class="bx-inline">headers</code> (a struct with lower-cased names), <code class="bx-inline">json()</code> (the body parsed), <code class="bx-inline">header( name )</code> (case-insensitive, <code class="bx-inline">""</code> if absent), and the cookies the response set — as <code class="bx-inline">cookies</code> (name to value) and <code class="bx-inline">setCookies</code> (each raw <code class="bx-inline">Set-Cookie</code> line, for asserting on <code class="bx-inline">HttpOnly</code> and the like).</p>
+
+<h2>Carrying a session across requests</h2>
+<p>Each call is independent, but a response's <code class="bx-inline">cookies</code> struct is shaped to be passed straight back in:</p>
+<pre class="bx-code"><span class="bx-code-label">bx</span><code>var login = app.inject( { method: "POST", url: "/login", form: { user: "ada", password: "x" } } )
+var me    = app.inject( { url: "/me", cookies: login.cookies } )
+
+expect( me.json().user ).toBe( "ada" )</code></pre>
+
+<h2>What it is and isn't</h2>
+<p>An injected request goes through the same <code class="bx-inline">Request</code> and <code class="bx-inline">Response</code> objects, the same router and the same error handling as one arriving over a socket — including the parts that are easy to forget to test, like <code class="bx-inline">404</code>s, a thrown handler becoming a <code class="bx-inline">500</code>, a body over its size limit becoming a <code class="bx-inline">413</code>, and response headers being refused if they contain a newline.</p>
+<div class="bx-callout">
+  <strong>What it can't reach</strong>
+  There is no Undertow behind an injected request, so <code class="bx-inline">req.rawExchange()</code> is <code class="bx-inline">null</code>, and <code class="bx-inline">app.ws()</code> routes can't be exercised this way — those need a real listening server and a WebSocket client. Everything else in the request/response path can.
+</div>
+
+<h2>Try it live</h2>
+<p>This page's own app has a route that builds a tiny app in memory, injects a request into it, and reports what came back: <a href="/docs/testing/demo">/docs/testing/demo</a>.</p>
+<pre class="bx-code"><span class="bx-code-label">bxs — app.bxs</span><code>app.get( "/docs/testing/demo", ( req, res ) => {
+    var demo = boxExpress()
+    demo.get( "/hello/:name", ( req, res ) => res.json( { greeting: "hello, " & req.params.name } ) )
+
+    var result = demo.inject( { url: "/hello/ada?shout=1" } )
+    res.json( { statusCode: result.statusCode, contentType: result.header( "content-type" ), body: result.json() } )
+} )</code></pre>
+</bx:output>
+<bx:include template="../partials/_foot.bxm">
