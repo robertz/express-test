@@ -3,6 +3,7 @@ app = boxExpress()
 // Liveness/readiness endpoints — registered before the middleware below so a
 // probe doesn't create a session. See the Process Lifecycle page.
 app.health()
+app.metrics()    // Prometheus endpoint at /metrics — see the Observability page
 
 // A single variadic app.use() call, registered in order — see the
 // "Multiple middleware in one call" section on the Middleware page.
@@ -14,6 +15,7 @@ app.use(
     boxExpressHelmet()
 )
 app.set( "views", expandPath( "./views" ) )
+app.set( "requestId", true )    // X-Request-Id header, req.id, and the id in log lines
 
 app.set( "reloadOnChange", true )
 app.set("env", "development")
@@ -50,6 +52,7 @@ app.locals.navGroups = [
         label: "Operations",
         items: [
             { label: "Process Lifecycle", href: "/docs/lifecycle" },
+            { label: "Observability", href: "/docs/observability" },
             { label: "Testing Your App", href: "/docs/testing" }
         ]
     }
@@ -73,6 +76,10 @@ app.get( "/docs/routing", ( req, res ) => {
 
 app.get( "/docs/middleware", ( req, res ) => {
     res.render( "docs/middleware", { title: "Middleware", docsMode: true, currentPath: req.path } )
+} )
+
+app.get( "/docs/observability", ( req, res ) => {
+    res.render( "docs/observability", { title: "Observability", docsMode: true, currentPath: req.path } )
 } )
 
 app.get( "/docs/testing", ( req, res ) => {

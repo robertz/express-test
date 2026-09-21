@@ -1,0 +1,50 @@
+<bx:include template="../partials/_head.bxm">
+<bx:output>
+<h1>Observability</h1>
+<p class="bx-docs-lede">Follow one request through the logs with a request ID, and let Prometheus watch the app with a metrics endpoint.</p>
+
+<h2>Request IDs</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "requestId", true )</code></pre>
+<p>Every request now gets an id. It's available as <code class="bx-inline">req.id</code>, sent back as an <code class="bx-inline">X-Request-Id</code> response header, and added to the request log line and the unhandled-error log line — so one request can be followed across log lines, and across nodes behind a load balancer:</p>
+<pre class="bx-code"><span class="bx-code-label">plain — stdout</span><code>[2026-09-20 21:02:38] [checkout-7f3a] GET /hello 127.0.0.1</code></pre>
+<p>If the client (or a proxy in front) already sends an <code class="bx-inline">X-Request-Id</code>, it's reused, so an id minted at the edge carries all the way through. Only a well-formed one is trusted — up to 128 letters, digits, <code class="bx-inline">.</code>, <code class="bx-inline">_</code> and <code class="bx-inline">-</code> — because the header is client-controlled and ends up in your logs and a response header; anything else is replaced with a generated id. <code class="bx-inline">app.set( "requestIdHeader", "X-Correlation-Id" )</code> renames the header. It's off by default, so existing log output doesn't change.</p>
+<p>Try it: <code class="bx-inline">curl -i -H "X-Request-Id: my-trace-1" localhost:3003/health/live</code> and look for the header on the response.</p>
+
+<h2>Metrics</h2>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.metrics()
+app.metrics( { path: "/-/metrics", token: getSystemSetting( "METRICS_TOKEN" ), sources: [ stomp ] } )</code></pre>
+<p><code class="bx-inline">app.metrics()</code> adds a <a href="/metrics">/metrics</a> endpoint in the Prometheus text format — this site has it on, so the link is live. Call it before <code class="bx-inline">listen()</code>, and before <code class="bx-inline">app.use()</code> if scrapes shouldn't pass through sessions or rate limiting.</p>
+<table class="bx-table">
+  <thead><tr><th>Metric</th><th>What it tells you</th></tr></thead>
+  <tbody>
+    <tr><td><code class="bx-inline">boxexpress_http_requests_total{class}</code></td><td>Requests by status class — a rising <code class="bx-inline">5xx</code> is the first thing to alert on.</td></tr>
+    <tr><td><code class="bx-inline">…_request_duration_seconds_sum</code> / <code class="bx-inline">_count</code></td><td>Total handling time and count — divide for an average, or take a rate.</td></tr>
+    <tr><td><code class="bx-inline">boxexpress_http_active_connections</code>, <code class="bx-inline">_active_requests</code>, bytes in/out</td><td>Load and traffic, from Undertow.</td></tr>
+    <tr><td><code class="bx-inline">boxexpress_websocket_connections</code></td><td>Open <code class="bx-inline">app.ws()</code> connections.</td></tr>
+    <tr><td><code class="bx-inline">boxexpress_draining</code></td><td><code class="bx-inline">1</code> once <code class="bx-inline">app.shutdown()</code> has begun.</td></tr>
+    <tr><td><code class="bx-inline">boxexpress_scheduler_job_*{job}</code></td><td>Per scheduled job: runs, failures, skipped overlaps, last success time and duration.</td></tr>
+    <tr><td><code class="bx-inline">boxexpress_cluster_peers</code>, <code class="bx-inline">_is_manager</code></td><td>With clustering on: how many other nodes this one sees, and whether it's the elected manager.</td></tr>
+    <tr><td><code class="bx-inline">boxexpress_stomp_*</code></td><td>Connections, subscriptions, and messages published and delivered, for a broker passed in <code class="bx-inline">sources</code>.</td></tr>
+  </tbody>
+</table>
+
+<div class="bx-callout">
+  <strong>Catching a job that fails quietly</strong>
+  A scheduled job that throws is caught and logged, and the next tick still runs — which is exactly why nobody notices a job that has been failing for a week. <code class="bx-inline">boxexpress_scheduler_job_failures_total</code> going up, or <code class="bx-inline">boxexpress_scheduler_job_last_success_timestamp_seconds</code> falling behind, is the alert to write. A job that has never succeeded has no last-success line at all, rather than a misleading zero.
+</div>
+
+<h2>Protecting the endpoint</h2>
+<p>The numbers are operational detail, so don't leave <code class="bx-inline">/metrics</code> open on a public listener. <code class="bx-inline">token</code> requires <code class="bx-inline">Authorization: Bearer &lt;token&gt;</code> (compared in constant time), or keep it on a private port or behind your proxy's rules. Requests made through <code class="bx-inline">app.inject()</code> aren't counted.</p>
+
+<h2>Adding your own metrics</h2>
+<p><code class="bx-inline">sources</code> takes any object with a <code class="bx-inline">getMetrics()</code> method returning metrics in this shape, so your own code can publish to the same endpoint:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>var ordersMetrics = {
+    getMetrics: () => [ {
+        name: "myapp_orders_pending", type: "gauge", help: "Orders waiting to ship.",
+        samples: [ { labels: {}, value: countPendingOrders() } ]
+    } ]
+}
+app.metrics( { sources: [ ordersMetrics ] } )</code></pre>
+<p>A source that throws is logged and skipped, so one broken metric can't take down the whole scrape. There are deliberately no per-route latency histograms: raw paths would multiply the number of series, and bucket boundaries are an app-specific choice.</p>
+</bx:output>
+<bx:include template="../partials/_foot.bxm">
