@@ -40,7 +40,7 @@ app.listen( 3000, ( port ) => {
     </div>
     <div class="bx-feature-card">
       <h3>Sessions, views, uploads</h3>
-      <p>Cookie-based sessions, <code class="bx-inline">.bxm</code>/<code class="bx-inline">.hbs</code> view rendering, and multipart file uploads out of the box.</p>
+      <p>Cookie-based sessions, <code class="bx-inline">.bxm</code> view rendering, and multipart file uploads out of the box.</p>
     </div>
     <div class="bx-feature-card">
       <h3>Virtual-thread concurrency</h3>
@@ -86,7 +86,7 @@ app.listen( 3000, ( port ) => {
     </a>
     <a class="bx-doc-link" href="/docs/views">
       <div class="bx-doc-link-title">Views &amp; Templates</div>
-      <div class="bx-doc-link-desc">res.render(), .bxm templates, Handlebars, and partials.</div>
+      <div class="bx-doc-link-desc">res.render(), .bxm templates, and partials.</div>
     </a>
     <a class="bx-doc-link" href="/docs/sessions">
       <div class="bx-doc-link-title">Sessions</div>
