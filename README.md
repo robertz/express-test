@@ -15,7 +15,7 @@ boxlang app.bxs
 
 The server listens on **port 3003**. `app.listen()` blocks the process — stop it with `Ctrl-C`.
 
-Dev-mode auto-reload is on (`app.set("reloadOnChange", true)`), so editing any `.bx`/`.bxs`/`.bxm` file under this directory restarts the server automatically and picks up the change.
+Dev-mode auto-reload is on (`app.set("reloadOnChange", true)`), so editing any `.bx`/`.bxs` file under this directory restarts the server automatically (`.bxm` views are re-read on every request, so they need no restart). `Ctrl-C` stops it.
 
 ## Screenshots
 

@@ -11,23 +11,13 @@
 services:
   web:
     build: .
-    # reloadOnChange (on in app.bxs) restarts BoxLang by spawning a *child*
-    # process and exiting the old one — fine on a normal machine (the child
-    # gets reparented to the OS's own init and keeps running), but the
-    # entrypoint's `exec boxlang app.bxs` makes that old process PID 1 in
-    # the container, and PID 1 exiting tears down the whole container
-    # instantly regardless of what it spawned first.
-    #
-    # `init: true` (Docker's built-in tini) does NOT fix this — tried it and
-    # confirmed directly: tini only waits on its one direct child and exits
-    # right along with it, it doesn't wait for orphaned grandchildren. Since
-    # FileWatcher watches the whole working directory (not just .bx/.bxs —
-    # confirmed a plain view-template edit triggers the same restart),
-    # *any* bind-mounted file edit kills the container this way. `restart:
-    # unless-stopped` is what actually gives a working edit-and-reload loop:
-    # Compose brings the container straight back up, re-running the
-    # entrypoint (including the ForgeBox install — a few seconds slower
-    # than an in-process reload, but automatic).
+    # reloadOnChange (on in app.bxs) runs a supervisor process that stays
+    # up and restarts the app as its own child (boxlang-express 0.2.22+), so
+    # the entrypoint's `exec boxlang app.bxs` can be PID 1 and an edit
+    # restarts the app inside the running container. Before 0.2.22 the
+    # restart exited PID 1 and took the container down with it; `restart:
+    # unless-stopped` was the workaround and is kept as a safety net for a
+    # crash outside the app.
     restart: unless-stopped
     ports:
       - "3003:3003"
