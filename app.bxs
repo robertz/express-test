@@ -21,6 +21,22 @@ app.post( "/docs/middleware/demo/webhook",
     ( req, res ) => res.json( { verified: true, event: req.body.event ?: "" } )
 )
 
+// The Middleware page's validation example. Its own boxExpressJSON() runs
+// first; boxExpressValidate() reads req.body, it doesn't parse it.
+app.post( "/docs/middleware/demo/signup",
+    boxExpressJSON(),
+    boxExpressValidate( {
+        body: {
+            email: { type: "email", required: true },
+            name: { type: "string", required: true, trim: true, maxLength: 40 },
+            age: { type: "integer", min: 18 },
+            plan: { type: "string", oneOf: [ "free", "pro" ], default: "free" }
+        },
+        query: { notify: { type: "boolean", default: false } }
+    } ),
+    ( req, res ) => res.status( 201 ).json( req.valid )
+)
+
 // A single variadic app.use() call, registered in order — see the
 // "Multiple middleware in one call" section on the Middleware page.
 app.use(
@@ -31,7 +47,11 @@ app.use(
     boxExpressHelmet()
 )
 app.set( "views", expandPath( "./views" ) )
+// Every res.render() below is wrapped in views/layouts/site.bxm — see
+// "Layouts" on the Views & Templates page.
+app.set( "view layout", "layouts/site" )
 app.set( "requestId", true )    // X-Request-Id header, req.id, and the id in log lines
+app.set( "log", "access" )      // one line per request once answered: status, duration, bytes
 
 // Signs res.cookie( ..., { signed: true } ) — see "Signed cookies" on the
 // Request & Response page. The fallback is for running the demo locally only.
@@ -44,7 +64,7 @@ app.set( "maxBodySize", 12582912 )     // 12MB, a little over boxExpressUpload()
 app.set( "reloadOnChange", true )
 app.set("env", "development")
 
-// Shared sidebar nav for every /docs/* page — see views/partials/_head.bxm.
+// Shared sidebar nav for every /docs/* page — see views/partials/_sidebar.bxm.
 // Set once on app.locals rather than passed to every render() call below —
 // see the "app.locals / res.locals" section on the Views & Templates page.
 app.locals.navGroups = [
@@ -119,6 +139,15 @@ app.get( "/docs/testing/demo", ( req, res ) => {
     var result = demo.inject( { url: "/hello/ada?shout=1" } )
     res.json( { statusCode: result.statusCode, contentType: result.header( "content-type" ), body: result.json() } )
 } )
+
+// The Routing page's live examples: a constrained param with a fallback,
+// two params in one segment, and a named wildcard.
+routePatterns = boxExpressRouter()
+routePatterns.get( "/users/:id(\d+)", ( req, res ) => res.json( { matched: "/users/:id(\d+)", params: req.params } ) )
+routePatterns.get( "/users/:name", ( req, res ) => res.json( { matched: "/users/:name", params: req.params } ) )
+routePatterns.get( "/flights/:from-:to", ( req, res ) => res.json( { matched: "/flights/:from-:to", params: req.params } ) )
+routePatterns.get( "/files/*rest", ( req, res ) => res.json( { matched: "/files/*rest", params: req.params } ) )
+app.use( "/docs/routing/demo", routePatterns )
 
 // The Configuration page's live example: a handler that would take 5s,
 // cut off after 1s by its own req.setTimeout().
@@ -208,6 +237,7 @@ app.post(
 // through to it.
 app.use( ( req, res ) => {
     res.status( 404 ).render( "error", {
+        layout: false,    // error.bxm is a complete page of its own
         statusCode: 404,
         title: "Page Not Found",
         message: "The page you're looking for doesn't exist or has moved.",
@@ -222,6 +252,7 @@ app.use( ( req, res ) => {
 app.use( ( err, req, res, next ) => {
     var isDev = app.getSetting( "env" ) == "development"
     res.status( 500 ).render( "error", {
+        layout: false,    // error.bxm is a complete page of its own
         statusCode: 500,
         title: "Something Went Wrong",
         message: isDev ? err.message : "An unexpected error occurred. Please try again.",

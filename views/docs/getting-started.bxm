@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Getting Started</h1>
 <p class="bx-docs-lede">Install BoxLang Express, write a minimal server, and run it.</p>
@@ -45,4 +44,3 @@ app.listen( 3000, ( port ) => {
   <a href="/docs/config"><span>Next</span>Configuration →</a>
 </div>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

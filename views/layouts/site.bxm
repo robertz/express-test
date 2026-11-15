@@ -22,15 +22,18 @@
 <bx:if data.docsMode>
 <div class="bx-docs-layout">
   <aside class="bx-sidebar">
-    <bx:loop array="#data.navGroups#" index="group">
-    <div class="bx-sidebar-group">
-      <h4>#group.label#</h4>
-      <bx:loop array="#group.items#" index="navItem">
-      <a href="#navItem.href#"<bx:if navItem.href eq data.currentPath> class="bx-active"</bx:if>>#navItem.label#</a>
-      </bx:loop>
-    </div>
-    </bx:loop>
+    #partial( "partials/_sidebar" )#
   </aside>
   <main class="bx-docs-content">
 </bx:if>
+#data.body#
+<bx:if data.docsMode>
+  </main>
+</div>
+</bx:if>
+<footer class="bx-footer">
+  Built with <a href="/">BoxLang Express</a> — served from this very app via <code class="bx-inline">res.render()</code>.
+</footer>
+</body>
+</html>
 </bx:output>

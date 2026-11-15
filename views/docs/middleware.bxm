@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Middleware</h1>
 <p class="bx-docs-lede">app.use(), execution order, and the middleware that ships with the framework.</p>
@@ -42,6 +41,7 @@
   <tr><td><code class="bx-inline">boxExpressCors(options)</code></td><td>Cross-Origin Resource Sharing — sets <code class="bx-inline">Access-Control-*</code> headers and answers preflight requests — see below</td></tr>
   <tr><td><code class="bx-inline">boxExpressRateLimit(options)</code></td><td>Fixed-window rate limiting, keyed by <code class="bx-inline">req.ip</code> by default — see below</td></tr>
   <tr><td><code class="bx-inline">boxExpressCsrf(options)</code></td><td>CSRF protection via <code class="bx-inline">req.session</code> — exposes <code class="bx-inline">req.csrfToken()</code> — see below</td></tr>
+  <tr><td><code class="bx-inline">boxExpressValidate(schema)</code></td><td>Checks and converts <code class="bx-inline">req.body</code>, <code class="bx-inline">req.query</code> and <code class="bx-inline">req.params</code> against a schema — see <a href="##validation">Validating requests</a></td></tr>
   <tr><td><code class="bx-inline">boxExpressRouter()</code></td><td>Returns a mountable <code class="bx-inline">Router</code> — see <a href="/docs/routing">Routing</a></td></tr>
 </table>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressJSON() )
@@ -282,9 +282,51 @@ app.use( ( err, req, res, next ) => {
 } )</code></pre>
 <p>Register error-handling middleware last, after every route — mirroring the built-in default it's overriding. See <a href="/docs/errors">Error Handling</a> for the full picture, including the framework's own default 404/500 behavior.</p>
 
+<h2 id="validation">Validating requests</h2>
+<p><code class="bx-inline">boxExpressValidate( schema )</code> checks a request before your handler runs. Values are converted to the types you declare, defaults are filled in, and a request that doesn't fit gets a <code class="bx-inline">400</code> listing every problem — so the handler can assume its input is the right shape.</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.post( "/docs/middleware/demo/signup",
+    boxExpressJSON(),
+    boxExpressValidate( {
+        body: {
+            email: { type: "email", required: true },
+            name: { type: "string", required: true, trim: true, maxLength: 40 },
+            age: { type: "integer", min: 18 },
+            plan: { type: "string", oneOf: [ "free", "pro" ], default: "free" }
+        },
+        query: { notify: { type: "boolean", default: false } }
+    } ),
+    ( req, res ) => res.status( 201 ).json( req.valid )
+)</code></pre>
+<p>That route is live. Send it something valid, then something that isn't:</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"email":"ada@example.com","name":"  Ada  ","age":"36","isAdmin":true}' \
+  "http://localhost:3003/docs/middleware/demo/signup?notify=yes"
+## {"body":{"email":"ada@example.com","name":"Ada","age":36,"plan":"free"},"query":{"notify":true}}
+
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"email":"nope","age":12,"plan":"enterprise"}' \
+  http://localhost:3003/docs/middleware/demo/signup
+## 400 {"error":true,"message":"Validation failed","errors":[
+##   {"in":"body","field":"email","message":"must be a valid email address"},
+##   {"in":"body","field":"name","message":"is required"},
+##   {"in":"body","field":"age","message":"must be at least 18"},
+##   {"in":"body","field":"plan","message":"must be one of: free, pro"} ]}</code></pre>
+<p>In the first response <code class="bx-inline">"36"</code> came back as the number <code class="bx-inline">36</code>, the name was trimmed, <code class="bx-inline">plan</code> got its default, and <code class="bx-inline">isAdmin</code> is gone: <code class="bx-inline">req.valid</code> holds only the fields the schema names, which makes it safe to pass straight to a model.</p>
+<table class="bx-table">
+  <tr><th>Rule</th><th>Meaning</th></tr>
+  <tr><td><code class="bx-inline">type</code></td><td><code class="bx-inline">string</code>, <code class="bx-inline">integer</code>, <code class="bx-inline">number</code>, <code class="bx-inline">boolean</code>, <code class="bx-inline">email</code>, <code class="bx-inline">url</code>, <code class="bx-inline">uuid</code>, <code class="bx-inline">date</code>, <code class="bx-inline">array</code>, <code class="bx-inline">struct</code> or <code class="bx-inline">any</code></td></tr>
+  <tr><td><code class="bx-inline">required</code> / <code class="bx-inline">default</code></td><td>Must be present and not empty / used when it's missing</td></tr>
+  <tr><td><code class="bx-inline">min</code>, <code class="bx-inline">max</code></td><td>Bounds for numbers</td></tr>
+  <tr><td><code class="bx-inline">minLength</code>, <code class="bx-inline">maxLength</code>, <code class="bx-inline">pattern</code>, <code class="bx-inline">trim</code></td><td>For strings</td></tr>
+  <tr><td><code class="bx-inline">oneOf</code></td><td>An array of allowed values</td></tr>
+  <tr><td><code class="bx-inline">items</code>, <code class="bx-inline">minItems</code>, <code class="bx-inline">maxItems</code></td><td>For arrays — <code class="bx-inline">items</code> is the rule for each element</td></tr>
+  <tr><td><code class="bx-inline">fields</code></td><td>Rules for a nested object</td></tr>
+  <tr><td><code class="bx-inline">validate</code></td><td>Your own <code class="bx-inline">( value, req ) => ...</code> check — return <code class="bx-inline">true</code>, or a message</td></tr>
+</table>
+<p>A second argument takes options: <code class="bx-inline">unknown</code> (<code class="bx-inline">"allow"</code>, <code class="bx-inline">"strip"</code> or <code class="bx-inline">"reject"</code> fields the schema doesn't name), <code class="bx-inline">status</code> (default <code class="bx-inline">400</code>), and <code class="bx-inline">onError</code> to answer a failure yourself, for instance by re-rendering a form. A schema with a misspelled rule or type throws when the route is registered rather than silently validating nothing.</p>
+
 <div class="bx-docs-pager">
   <a href="/docs/routing"><span>Previous</span>← Routing</a>
   <a href="/docs/request-response"><span>Next</span>Request &amp; Response →</a>
 </div>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

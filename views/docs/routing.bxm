@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Routing</h1>
 <p class="bx-docs-lede">HTTP method handlers, route params, wildcards, param() callbacks, and mountable sub-routers.</p>
@@ -40,6 +39,30 @@ app.all( "/ping", ( req, res ) => res.send( "matched: " & req.method ) )</code><
 } )
 // GET /files/a/b/c.txt → matches</code></pre>
 
+<h2 id="patterns">Path patterns</h2>
+<p>A param can be limited to values matching a regular expression, written in parentheses after its name. A request that doesn't fit doesn't match that route, so a more general one can follow it — no <code class="bx-inline">isNumeric()</code> check at the top of the handler:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>patterns = boxExpressRouter()
+
+patterns.get( "/users/:id(\d+)", ( req, res ) => res.json( { matched: "/users/:id(\d+)", params: req.params } ) )
+patterns.get( "/users/:name", ( req, res ) => res.json( { matched: "/users/:name", params: req.params } ) )
+patterns.get( "/flights/:from-:to", ( req, res ) => res.json( { matched: "/flights/:from-:to", params: req.params } ) )
+patterns.get( "/files/*rest", ( req, res ) => res.json( { matched: "/files/*rest", params: req.params } ) )
+
+app.use( "/docs/routing/demo", patterns )</code></pre>
+<p>That router is mounted in this site — try each one:</p>
+<table class="bx-table">
+  <tr><th>Request</th><th>Route that answers</th><th><code class="bx-inline">req.params</code></th></tr>
+  <tr><td><a href="/docs/routing/demo/users/42">/users/42</a></td><td><code class="bx-inline">/users/:id(\d+)</code></td><td><code class="bx-inline">{{ id: "42" }}</code></td></tr>
+  <tr><td><a href="/docs/routing/demo/users/ada">/users/ada</a></td><td><code class="bx-inline">/users/:name</code> — not numeric, so the first route is skipped</td><td><code class="bx-inline">{{ name: "ada" }}</code></td></tr>
+  <tr><td><a href="/docs/routing/demo/flights/LAX-JFK">/flights/LAX-JFK</a></td><td><code class="bx-inline">/flights/:from-:to</code></td><td><code class="bx-inline">{{ from: "LAX", to: "JFK" }}</code></td></tr>
+  <tr><td><a href="/docs/routing/demo/files/css/site.css">/files/css/site.css</a></td><td><code class="bx-inline">/files/*rest</code></td><td><code class="bx-inline">{{ rest: "css/site.css" }}</code></td></tr>
+</table>
+<p>A segment can mix params with literal text (<code class="bx-inline">/api/v:version</code>, <code class="bx-inline">/files/:name(.+).json</code>), and a trailing <code class="bx-inline">*name</code> is a wildcard that captures what it matched. The constraint must match the whole segment and can't contain a <code class="bx-inline">/</code>. A pattern that can't be parsed throws <code class="bx-inline">BoxExpress.InvalidRoutePath</code> when the route is registered, not on the first request.</p>
+<div class="bx-callout bx-warn">
+  <strong>A lone :name is unchanged</strong>
+  A segment that is only <code class="bx-inline">:name</code> still takes everything after the colon as the name, so <code class="bx-inline">/:user-id</code> is one param called <code class="bx-inline">user-id</code>. To put a literal suffix on a single param, give it a constraint: <code class="bx-inline">/:name(.+).json</code>, not <code class="bx-inline">/:name.json</code>.
+</div>
+
 <h2>param() callbacks</h2>
 <p><code class="bx-inline">app.param(name, callback)</code> registers a callback that runs once before any route handler using that param name, letting you resolve/validate it in one place instead of every handler:</p>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.param( "id", ( req, res, next, value ) => {
@@ -78,4 +101,3 @@ app.use( "/api", apiRouter )
   <a href="/docs/middleware"><span>Next</span>Middleware →</a>
 </div>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

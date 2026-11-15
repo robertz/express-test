@@ -1,7 +1,6 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Views &amp; Templates</h1>
-<p class="bx-docs-lede">res.render(), .bxm templates, and sharing layout across pages.</p>
+<p class="bx-docs-lede">res.render(), .bxm templates, layouts and partials.</p>
 
 <h2>Setting up a views directory</h2>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "views", expandPath( "./views" ) )</code></pre>
@@ -19,18 +18,46 @@
 </div>
 <p>Handlebars (<code class="bx-inline">.hbs</code>) views were removed in BoxLang Express 0.2.20; rendering one throws <code class="bx-inline">BoxExpress.UnsupportedViewEngine</code>.</p>
 
-<h2>Sharing layout with partials</h2>
-<p><code class="bx-inline">.bxm</code> templates are just BoxLang, so ordinary <code class="bx-inline">&lt;bx:include&gt;</code> works for shared header/footer/nav — this documentation site is built exactly this way, with every page including the same two partials:</p>
-<pre class="bx-code"><span class="bx-code-label">html — views/docs/some-page.bxm</span><code>&lt;bx:include template="../partials/_head.bxm"&gt;
-&lt;bx:output&gt;
-  &lt;h1&gt;Page content##data.title##&lt;/h1&gt;
-&lt;/bx:output&gt;
-&lt;bx:include template="../partials/_foot.bxm"&gt;</code></pre>
-<p>Included paths resolve relative to the including template's own directory, same as a plain CFML/BoxLang <code class="bx-inline">include</code> — no special wiring from the framework is needed.</p>
+<h2 id="layouts">Layouts</h2>
+<p>A layout is an ordinary view that wraps another one: the page shell — <code class="bx-inline">&lt;html&gt;</code>, navigation, footer — written once. Name one for the whole app, and <code class="bx-inline">res.render()</code> renders the view first, then the layout with the view's HTML as <code class="bx-inline">data.body</code>:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "views", expandPath( "./views" ) )
+app.set( "view layout", "layouts/site" )      // views/layouts/site.bxm</code></pre>
+<pre class="bx-code"><span class="bx-code-label">html — views/layouts/site.bxm</span><code>&lt;bx:output&gt;&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;&lt;title&gt;##data.title## · BoxLang Express&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+  &lt;aside class="bx-sidebar"&gt;##partial( "partials/_sidebar" )##&lt;/aside&gt;
+  &lt;main&gt;##data.body##&lt;/main&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+&lt;/bx:output&gt;</code></pre>
+<p>A page's own view is then only its content — no header or footer includes:</p>
+<pre class="bx-code"><span class="bx-code-label">html — views/docs/some-page.bxm</span><code>&lt;bx:output&gt;
+  &lt;h1&gt;Page content&lt;/h1&gt;
+&lt;/bx:output&gt;</code></pre>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  Every page of this site is rendered this way. <code class="bx-inline">app.bxs</code> sets <code class="bx-inline">"view layout"</code> once; the page you're reading is <code class="bx-inline">views/docs/views.bxm</code>, wrapped in <code class="bx-inline">views/layouts/site.bxm</code>, whose sidebar is the <code class="bx-inline">partials/_sidebar</code> partial.
+</div>
+<p>The layout sees the same <code class="bx-inline">data</code> as the view. And because the view runs first, it can pass values up to the layout by setting them on <code class="bx-inline">data</code>:</p>
+<pre class="bx-code"><span class="bx-code-label">html — a view setting its own page title</span><code>&lt;bx:set data.title = "Quarterly report"&gt;
+&lt;bx:output&gt;&lt;h1&gt;...&lt;/h1&gt;&lt;/bx:output&gt;</code></pre>
+<p>One render can choose a different layout, or none, with a <code class="bx-inline">layout</code> key in its data. This site's error pages are complete HTML documents of their own, so they opt out:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>res.render( "login", { layout: "layouts/bare" } )
+res.status( 404 ).render( "error", { layout: false, statusCode: 404 } )</code></pre>
+
+<h2 id="partials">Partials</h2>
+<p><code class="bx-inline">partial( view, data )</code> renders another view and returns its HTML, for pieces shared between pages. A partial sees everything the calling view does, plus whatever you pass it — and what you pass is gone again when it returns:</p>
+<pre class="bx-code"><span class="bx-code-label">html</span><code>&lt;bx:output&gt;
+&lt;bx:loop array="##data.orders##" index="order"&gt;
+  ##partial( "partials/order-row", { order: order } )##
+&lt;/bx:loop&gt;
+&lt;/bx:output&gt;</code></pre>
+<p>A plain <code class="bx-inline">&lt;bx:include&gt;</code> still works too, since <code class="bx-inline">.bxm</code> templates are just BoxLang. Its path is relative to the file it's written in rather than to the views directory, and it can't be given data of its own.</p>
 
 <figure class="bx-screenshot">
-  <img src="/assets/img/screenshots/docs-preview.png" alt="A docs page rendered from _head.bxm and _foot.bxm, showing the shared sidebar and nav">
-  <figcaption>This exact page, rendered from the shared <code class="bx-inline">_head.bxm</code>/<code class="bx-inline">_foot.bxm</code> partials.</figcaption>
+  <img src="/assets/img/screenshots/docs-preview.png" alt="A docs page rendered inside the site layout, showing the shared sidebar and nav">
+  <figcaption>This exact page: its own view wrapped in the shared <code class="bx-inline">layouts/site.bxm</code> layout.</figcaption>
 </figure>
 
 <h2>app.locals / res.locals</h2>
@@ -61,4 +88,3 @@ app.get( "/", ( req, res ) => {
   <a href="/docs/sessions"><span>Next</span>Sessions →</a>
 </div>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

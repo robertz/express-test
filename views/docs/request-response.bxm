@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Request &amp; Response</h1>
 <p class="bx-docs-lede">The full req.* and res.* API available inside every handler.</p>
@@ -195,4 +194,3 @@ curl -s -b "demo_visits=s%3A99.forged" http://localhost:3003/docs/request-respon
   <a href="/docs/views"><span>Next</span>Views &amp; Templates →</a>
 </div>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

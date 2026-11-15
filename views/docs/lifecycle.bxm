@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Process Lifecycle</h1>
 <p class="bx-docs-lede">What actually happens on startup, shutdown, a port conflict, and a dev-mode file change.</p>
@@ -61,4 +60,3 @@ nodemon -e bx,bxs --exec boxlang app.bxs</code></pre>
   <span></span>
 </div>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

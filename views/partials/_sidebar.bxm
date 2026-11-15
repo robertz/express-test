@@ -1,0 +1,10 @@
+<bx:output>
+    <bx:loop array="#data.navGroups#" index="group">
+    <div class="bx-sidebar-group">
+      <h4>#group.label#</h4>
+      <bx:loop array="#group.items#" index="navItem">
+      <a href="#navItem.href#"<bx:if navItem.href eq data.currentPath> class="bx-active"</bx:if>>#navItem.label#</a>
+      </bx:loop>
+    </div>
+    </bx:loop>
+</bx:output>

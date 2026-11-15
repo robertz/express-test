@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Observability</h1>
 <p class="bx-docs-lede">Follow one request through the logs with a request ID, and let Prometheus watch the app with a metrics endpoint.</p>
@@ -46,5 +45,26 @@ app.metrics( { path: "/-/metrics", token: getSystemSetting( "METRICS_TOKEN" ), s
 }
 app.metrics( { sources: [ ordersMetrics ] } )</code></pre>
 <p>A source that throws is logged and skipped, so one broken metric can't take down the whole scrape. There are deliberately no per-route latency histograms: raw paths would multiply the number of series, and bucket boundaries are an app-specific choice.</p>
+<h2 id="access-log">Access log</h2>
+<p>By default each request prints one line as it arrives — enough to see that it came in, not how it went. <code class="bx-inline">app.set( "log", ... )</code> can log each request once it's answered instead, with its status and duration:</p>
+<table class="bx-table">
+  <tr><th>Value</th><th>Output</th></tr>
+  <tr><td><code class="bx-inline">true</code> (default)</td><td>A line on arrival: method, path, client address</td></tr>
+  <tr><td><code class="bx-inline">"access"</code></td><td>A line on completion, adding status, duration and bytes sent</td></tr>
+  <tr><td><code class="bx-inline">"json"</code></td><td>One JSON object per line on completion, for a log collector</td></tr>
+  <tr><td>a function</td><td>Called with the entry, the request and the response; prints nothing itself</td></tr>
+  <tr><td><code class="bx-inline">false</code></td><td>Nothing</td></tr>
+</table>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  This site runs with <code class="bx-inline">app.set( "log", "access" )</code>. Watch the terminal you started it from while you click around — each page view is one line, and the <a href="/docs/config/demo/slow">timeout demo</a> shows up as a <code class="bx-inline">503</code> taking about a second:
+</div>
+<pre class="bx-code"><span class="bx-code-label">plain — stdout</span><code>[2026-11-15 12:00:00] [3f6c…] GET /docs/observability 200 8.42ms 14210b 127.0.0.1
+[2026-11-15 12:00:04] [9a1e…] GET /docs/config/demo/slow 503 1048.7ms 44b 127.0.0.1</code></pre>
+<p><code class="bx-inline">"json"</code> writes the same facts as fields — <code class="bx-inline">time</code>, <code class="bx-inline">method</code>, <code class="bx-inline">path</code>, <code class="bx-inline">status</code>, <code class="bx-inline">durationMs</code>, <code class="bx-inline">bytes</code>, <code class="bx-inline">ip</code>, <code class="bx-inline">userAgent</code>, <code class="bx-inline">referer</code>, and <code class="bx-inline">id</code> when request IDs are on. A function receives that entry and can add to it or send it elsewhere:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "log", ( entry, req, res ) => {
+    entry.user = req.session.userId ?: ""
+    writeLog( text = JSONSerialize( entry ), log = "access" )
+} )</code></pre>
+<p>The logged <code class="bx-inline">path</code> never includes the query string, which too often carries tokens; a function sink can read <code class="bx-inline">req.originalUrl</code> if you want it. Control characters in a path are printed as <code class="bx-inline">?</code> so a request can't forge a log line.</p>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

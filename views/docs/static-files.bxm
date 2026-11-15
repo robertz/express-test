@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Static Files &amp; Uploads</h1>
 <p class="bx-docs-lede">Serving a directory of static assets, sending individual files, and handling multipart uploads.</p>
@@ -80,4 +79,3 @@ app.get( "/report/download", ( req, res ) => {
   <a href="/docs/errors"><span>Next</span>Error Handling →</a>
 </div>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

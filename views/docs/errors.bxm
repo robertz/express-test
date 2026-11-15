@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Error Handling</h1>
 <p class="bx-docs-lede">The framework's default 404/500 behavior, and how this site overrides it with themed HTML pages.</p>
@@ -74,4 +73,3 @@ app.use( ( err, req, res, next ) => {
   <a href="/docs/lifecycle"><span>Next</span>Process Lifecycle →</a>
 </div>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">

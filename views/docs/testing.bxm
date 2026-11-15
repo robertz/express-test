@@ -1,4 +1,3 @@
-<bx:include template="../partials/_head.bxm">
 <bx:output>
 <h1>Testing Your App</h1>
 <p class="bx-docs-lede">Run requests through your app in-process with <code class="bx-inline">app.inject()</code> — no port, no HTTP client, no server to start and stop.</p>
@@ -58,4 +57,3 @@ expect( me.json().user ).toBe( "ada" )</code></pre>
     res.json( { statusCode: result.statusCode, contentType: result.header( "content-type" ), body: result.json() } )
 } )</code></pre>
 </bx:output>
-<bx:include template="../partials/_foot.bxm">
