@@ -82,11 +82,38 @@ ln -s /path/to/the-module boxlang_modules/the-module</code></pre>
   <tr><td><code class="bx-inline">"views"</code></td><td>Directory <code class="bx-inline">res.render()</code> resolves view files from. See <a href="/docs/views">Views &amp; Templates</a>.</td></tr>
   <tr><td><code class="bx-inline">"env"</code></td><td>When set to <code class="bx-inline">"development"</code>, the default 500 handler exposes the real error message instead of a generic one. Custom error middleware can read this the same way — see <a href="/docs/errors">Error Handling</a>.</td></tr>
   <tr><td><code class="bx-inline">"trust proxy"</code></td><td>Which proxies to believe for <code class="bx-inline">req.ip</code>, <code class="bx-inline">req.protocol</code> and <code class="bx-inline">req.hostname</code>. A number trusts that many hops (<code class="bx-inline">1</code> for a single load balancer); a list of addresses or CIDR ranges trusts those proxies; <code class="bx-inline">true</code> takes the left-most <code class="bx-inline">X-Forwarded-For</code> entry, which a client can forge when its proxy appends to the header — prefer a number or a list. Off by default.</td></tr>
+  <tr><td><code class="bx-inline">"requestTimeoutMs"</code></td><td>Answers <code class="bx-inline">503</code> when a handler hasn't started its response in this many milliseconds. Off by default. See <a href="##limits">Timeouts and size limits</a>.</td></tr>
+  <tr><td><code class="bx-inline">"maxBodySize"</code></td><td>Largest request body, in bytes, for the whole app — a bigger one gets <code class="bx-inline">413</code> before any handler runs. Off by default.</td></tr>
+  <tr><td><code class="bx-inline">"headerTimeoutMs"</code> / <code class="bx-inline">"keepAliveTimeoutMs"</code> / <code class="bx-inline">"maxHeaderSize"</code></td><td>Connection-level limits: time to send request headers (60s), idle time between requests (60s), and total header size (64 KB).</td></tr>
   <tr><td><code class="bx-inline">"reloadOnChange"</code></td><td>Dev-mode auto-restart on file change. See <a href="/docs/lifecycle">Process Lifecycle</a>.</td></tr>
 </table>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "env", "development" )
 app.set( "trust proxy", 1 )
 app.set( "views", expandPath( "./views" ) )</code></pre>
+
+<h2 id="limits">Timeouts and size limits</h2>
+<p>Five settings bound what one client can cost the server. <code class="bx-inline">0</code> turns any of them off, and a value that isn't a whole number throws at the <code class="bx-inline">app.set()</code> call.</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "requestTimeoutMs", 30000 )   // a handler has 30s to start responding
+app.set( "maxBodySize", 12582912 )     // 12MB, a little over the largest upload this app accepts</code></pre>
+<p>Both lines are in this site's own <code class="bx-inline">app.bxs</code>. When a request runs past its timeout, the handler's thread is interrupted — so the query, HTTP call or <code class="bx-inline">sleep()</code> it's waiting on throws — and the client gets a <code class="bx-inline">503</code>. One route that needs a different limit sets its own with <code class="bx-inline">req.setTimeout( ms )</code>:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/docs/config/demo/slow", ( req, res ) => {
+    req.setTimeout( 1000 )   // this request only: 1s instead of the app's 30s
+    sleep( 5000 )            // stands in for a query that never comes back
+    res.send( "you won't see this" )
+} )</code></pre>
+<p><a href="/docs/config/demo/slow">Try it</a> — the response arrives after about one second, not five:</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>curl -i http://localhost:3003/docs/config/demo/slow
+## HTTP/1.1 503 Service Unavailable
+## Connection: close
+##
+## {"error":true,"message":"Request timed out"}</code></pre>
+<div class="bx-callout">
+  <strong>What a timeout can and can't stop</strong>
+  The timeout covers the time to <em>start</em> a response, so an SSE stream or a large download isn't cut off, and <code class="bx-inline">req.setTimeout( 0 )</code> exempts a route entirely. A handler that never blocks — a pure CPU loop — has nothing to interrupt and isn't stopped. Error-handling middleware doesn't run for a timeout; a handler that catches the exception itself can check <code class="bx-inline">req.timedOut</code> and answer however it likes.
+</div>
+<p><code class="bx-inline">"maxBodySize"</code> sits above the body parsers' own <code class="bx-inline">limit</code> options, which only apply where a parser is mounted. A request that declares its size is refused on its <code class="bx-inline">Content-Length</code> header alone, before the body is read:</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>head -c 13000000 /dev/zero | curl -i -X POST --data-binary @- http://localhost:3003/upload
+## HTTP/1.1 413 Request Entity Too Large</code></pre>
 
 <div class="bx-docs-pager">
   <a href="/docs/getting-started"><span>Previous</span>← Getting Started</a>

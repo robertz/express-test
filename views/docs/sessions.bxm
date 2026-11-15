@@ -24,6 +24,7 @@
 <h2>Durable sessions (boxExpressCacheStore)</h2>
 <p>The default session store is an in-memory <code class="bx-inline">ConcurrentHashMap</code> on the <code class="bx-inline">Session</code> instance — fine for one process, gone on restart, and not shared across a cluster. <code class="bx-inline">boxExpressCacheStore()</code> is a ready-made <code class="bx-inline">store</code> backed by BoxLang's own <code class="bx-inline">cache()</code> service instead:</p>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressSession( { store: boxExpressCacheStore( "sessions" ) } ) )</code></pre>
+<p>Since BoxLang Express 0.2.26, entries are stored under <code class="bx-inline">boxexpress-session-&lt;id&gt;</code> and only cookie values shaped like a generated id are looked up, so a session cookie can never address anything else kept in the same cache. Upgrading signs out existing cache-backed sessions once.</p>
 <p>The named cache (<code class="bx-inline">"sessions"</code> here) has to already be registered in <code class="bx-inline">boxlang.json</code> — this doesn't create one, it just talks to it. Point that cache's <code class="bx-inline">objectStore</code> at <code class="bx-inline">"JDBCStore"</code> and session data lands in a real SQL table instead of memory, surviving a restart and shared across every process pointed at the same database:</p>
 <pre class="bx-code"><span class="bx-code-label">json — boxlang.json</span><code>"caches": {
   "default": { "provider": "BoxCacheProvider" },

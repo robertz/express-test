@@ -15,10 +15,17 @@
   <tr><td><code class="bx-inline">req.files</code></td><td>Uploaded files, populated by <code class="bx-inline">boxExpressUpload()</code></td></tr>
   <tr><td><code class="bx-inline">req.headers</code></td><td>Struct of request headers</td></tr>
   <tr><td><code class="bx-inline">req.get(name)</code></td><td>Read a single header by name — returns null if absent</td></tr>
-  <tr><td><code class="bx-inline">req.cookies</code></td><td>Struct of parsed cookies</td></tr>
+  <tr><td><code class="bx-inline">req.cookies</code></td><td>Struct of parsed cookies — URL-decoded; a value with a malformed escape (<code class="bx-inline">50%</code>) is kept as raw text rather than failing the request</td></tr>
+  <tr><td><code class="bx-inline">req.signedCookies</code></td><td>Signed cookies that passed verification, by name — <code class="bx-inline">false</code> for one that was tampered with. See <a href="##signed-cookies">Signed cookies</a></td></tr>
   <tr><td><code class="bx-inline">req.ip</code></td><td>Direct TCP peer address by default; prefers <code class="bx-inline">X-Forwarded-For</code> when <code class="bx-inline">app.set("trust proxy", true)</code> — see <a href="/docs/config">Configuration</a></td></tr>
   <tr><td><code class="bx-inline">req.protocol</code> / <code class="bx-inline">req.secure</code></td><td>Always <code class="bx-inline">"http"</code> / <code class="bx-inline">false</code> — BoxExpress's own <code class="bx-inline">HttpServer</code> never terminates TLS — unless <code class="bx-inline">trust proxy</code> is on and the request carries <code class="bx-inline">X-Forwarded-Proto: https</code></td></tr>
   <tr><td><code class="bx-inline">req.hostname</code></td><td>The <code class="bx-inline">Host</code> header (or <code class="bx-inline">X-Forwarded-Host</code> with <code class="bx-inline">trust proxy</code> on) with any <code class="bx-inline">:port</code> stripped</td></tr>
+  <tr><td><code class="bx-inline">req.subdomains</code></td><td>Labels in front of the domain, nearest the domain first — <code class="bx-inline">tobi.ferrets.example.com</code> gives <code class="bx-inline">[ "ferrets", "tobi" ]</code>. <code class="bx-inline">app.set( "subdomain offset", 3 )</code> for a domain like <code class="bx-inline">example.co.uk</code></td></tr>
+  <tr><td><code class="bx-inline">req.xhr</code></td><td><code class="bx-inline">true</code> when <code class="bx-inline">X-Requested-With</code> is <code class="bx-inline">XMLHttpRequest</code> (jQuery and axios send it; <code class="bx-inline">fetch()</code> doesn't)</td></tr>
+  <tr><td><code class="bx-inline">req.baseUrl</code></td><td>The path the current router or path-scoped middleware is mounted at — <code class="bx-inline">""</code> at the top level</td></tr>
+  <tr><td><code class="bx-inline">req.accepts(types)</code></td><td>Whichever of the offered types the <code class="bx-inline">Accept</code> header prefers, or <code class="bx-inline">false</code> — see <a href="##content-negotiation">Content negotiation</a></td></tr>
+  <tr><td><code class="bx-inline">req.acceptsLanguages(langs)</code></td><td>The same against <code class="bx-inline">Accept-Language</code></td></tr>
+  <tr><td><code class="bx-inline">req.is(types)</code></td><td>The first given type the request's own <code class="bx-inline">Content-Type</code> matches, or <code class="bx-inline">false</code></td></tr>
   <tr><td><code class="bx-inline">req.session</code> / <code class="bx-inline">req.sessionID</code></td><td>Populated by <code class="bx-inline">boxExpressSession()</code> — see <a href="/docs/sessions">Sessions</a></td></tr>
   <tr><td><code class="bx-inline">req.rawExchange()</code></td><td>Escape hatch to the underlying <code class="bx-inline">com.sun.net.httpserver.HttpExchange</code></td></tr>
 </table>
@@ -31,9 +38,17 @@
   <tr><td><code class="bx-inline">res.json(data)</code></td><td>Serializes and sends with <code class="bx-inline">Content-Type: application/json</code></td></tr>
   <tr><td><code class="bx-inline">res.status(code)</code></td><td>Sets the status code — chainable</td></tr>
   <tr><td><code class="bx-inline">res.sendStatus(code)</code></td><td>Sends a status with its reason phrase as the body (e.g. <code class="bx-inline">"Not Found"</code>)</td></tr>
-  <tr><td><code class="bx-inline">res.set(name, value)</code> / <code class="bx-inline">res.header(name, value)</code></td><td>Sets an arbitrary response header — aliases of each other</td></tr>
-  <tr><td><code class="bx-inline">res.type(mimeType)</code></td><td>Sets <code class="bx-inline">Content-Type</code></td></tr>
-  <tr><td><code class="bx-inline">res.cookie(name, value, options)</code></td><td>Sets a <code class="bx-inline">Set-Cookie</code> header — options: <code class="bx-inline">path</code>, <code class="bx-inline">maxAge</code>, <code class="bx-inline">httpOnly</code> (default true), <code class="bx-inline">secure</code>, <code class="bx-inline">sameSite</code></td></tr>
+  <tr><td><code class="bx-inline">res.set(name, value)</code> / <code class="bx-inline">res.header(name, value)</code></td><td>Sets an arbitrary response header — aliases of each other. <code class="bx-inline">res.set( {{ ... }} )</code> sets several at once</td></tr>
+  <tr><td><code class="bx-inline">res.get(name)</code></td><td>A response header set so far, or null</td></tr>
+  <tr><td><code class="bx-inline">res.append(name, value)</code></td><td>Adds to a header instead of replacing it</td></tr>
+  <tr><td><code class="bx-inline">res.type(mimeType)</code></td><td>Sets <code class="bx-inline">Content-Type</code> — a full type, or an extension such as <code class="bx-inline">"json"</code> or <code class="bx-inline">".png"</code></td></tr>
+  <tr><td><code class="bx-inline">res.vary(field)</code></td><td>Adds a request header name to <code class="bx-inline">Vary</code>, once — so a cache keys on every header the response depends on</td></tr>
+  <tr><td><code class="bx-inline">res.location(url)</code></td><td>Sets <code class="bx-inline">Location</code> without ending the response — pair it with <code class="bx-inline">res.status( 201 )</code></td></tr>
+  <tr><td><code class="bx-inline">res.links( {{ next: url, last: url }} )</code></td><td>Builds a <code class="bx-inline">Link</code> header for paged results</td></tr>
+  <tr><td><code class="bx-inline">res.attachment(filename)</code></td><td><code class="bx-inline">Content-Disposition: attachment</code> for a body you build yourself; the filename's extension sets <code class="bx-inline">Content-Type</code></td></tr>
+  <tr><td><code class="bx-inline">res.format( [ ... ] )</code></td><td>Runs the handler for the type the client prefers — see <a href="##content-negotiation">Content negotiation</a></td></tr>
+  <tr><td><code class="bx-inline">res.cookie(name, value, options)</code></td><td>Sets a <code class="bx-inline">Set-Cookie</code> header — options: <code class="bx-inline">path</code>, <code class="bx-inline">domain</code>, <code class="bx-inline">maxAge</code>, <code class="bx-inline">expires</code>, <code class="bx-inline">httpOnly</code> (default true), <code class="bx-inline">secure</code>, <code class="bx-inline">sameSite</code>, <code class="bx-inline">signed</code></td></tr>
+  <tr><td><code class="bx-inline">res.clearCookie(name, options)</code></td><td>Tells the browser to drop a cookie — pass the same <code class="bx-inline">path</code> and <code class="bx-inline">domain</code> it was set with, or the browser keeps it</td></tr>
   <tr><td><code class="bx-inline">res.redirect(url, code = 302)</code></td><td>Sends a redirect with a caller-supplied status code</td></tr>
   <tr><td><code class="bx-inline">res.end(data = "")</code></td><td>Ends the response with an optional body, no content-type inference</td></tr>
   <tr><td><code class="bx-inline">res.sendBytes(bytes, contentType)</code></td><td>Sends raw bytes with an explicit content type, bypassing the string/UTF-8 round trip</td></tr>
@@ -61,6 +76,65 @@ app.get( "/moved", ( req, res ) => {
 app.get( "/debug", ( req, res ) => {
     res.dump( req.query )
 } )</code></pre>
+
+<h2 id="content-negotiation">Content negotiation</h2>
+<p>One route can serve a browser and an API client. <code class="bx-inline">res.format()</code> reads the request's <code class="bx-inline">Accept</code> header, runs the handler for the type it prefers, sets <code class="bx-inline">Content-Type</code> to match and adds <code class="bx-inline">Accept</code> to <code class="bx-inline">Vary</code>. If nothing matches and there's no <code class="bx-inline">default</code> handler, the response is <code class="bx-inline">406 Not Acceptable</code>.</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>demo = boxExpressRouter()
+
+demo.get( "/negotiate", ( req, res ) => {
+    var info = {
+        accepts: req.accepts( "html", "json" ),
+        language: req.acceptsLanguages( "en", "fr", "de" ),
+        xhr: req.xhr,
+        baseUrl: req.baseUrl,
+        path: req.path,
+        originalUrl: req.originalUrl
+    }
+    res.format( [
+        html: () => res.send( "&lt;pre&gt;" & encodeForHTML( JSONSerialize( info ) ) & "&lt;/pre&gt;" ),
+        json: () => res.json( info )
+    ] )
+} )
+
+app.use( "/docs/request-response/demo", demo )</code></pre>
+<p>That router is mounted in this site. <a href="/docs/request-response/demo/negotiate">Open it in your browser</a> and you get the HTML handler; ask for JSON and the same URL answers differently:</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>curl -i -H "Accept: application/json" -H "Accept-Language: de, fr;q=0.5" \
+  http://localhost:3003/docs/request-response/demo/negotiate
+
+curl -i -H "Accept: image/png" http://localhost:3003/docs/request-response/demo/negotiate   ## 406</code></pre>
+<p><code class="bx-inline">req.baseUrl</code> in the output is <code class="bx-inline">/docs/request-response/demo</code> — where the router is mounted — while <code class="bx-inline">req.path</code> is just <code class="bx-inline">/negotiate</code>.</p>
+<div class="bx-callout bx-warn">
+  <strong>Pass res.format() an ordered struct</strong>
+  When a client has no preference (<code class="bx-inline">Accept: */*</code>, or no header at all — curl's default) the first key wins. A <code class="bx-inline">[ ... ]</code> struct keeps its keys in the order you wrote them; a plain <code class="bx-inline">{{ ... }}</code> struct doesn't, so which handler runs would be arbitrary.
+</div>
+<p><code class="bx-inline">req.accepts()</code> is the same decision without the dispatch, for when a <code class="bx-inline">switch</code> reads better. <code class="bx-inline">req.is()</code> looks the other way — at what the client <em>sent</em>:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.post( "/hook", ( req, res ) => {
+    if ( !req.is( "json", "+json" ) ) {   // application/json, application/vnd.api+json, ...
+        return res.sendStatus( 415 )
+    }
+    res.sendStatus( 204 )
+} )</code></pre>
+
+<h2 id="signed-cookies">Signed cookies</h2>
+<p>A cookie is whatever the browser sends back, and a user can edit theirs. A signed cookie carries an HMAC of its own value, so an edited one is rejected when it returns. Set a secret once, then pass <code class="bx-inline">signed: true</code>:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "cookie secret", server.system.environment.COOKIE_SECRET ?: "dev-only-secret" )
+
+negotiationDemo.get( "/signed-cookie", ( req, res ) => {   // mounted at /docs/request-response/demo
+    var previous = req.signedCookies.demo_visits ?: 0
+    var tampered = ( previous === false )
+    var visits = tampered ? 1 : previous + 1
+    res.cookie( "demo_visits", visits, { signed: true, path: "/docs/request-response/demo" } )
+    res.json( { visits: visits, tampered: tampered } )
+} )</code></pre>
+<p><a href="/docs/request-response/demo/signed-cookie">Open it</a> and reload a few times to watch the count rise. Then open your browser's dev tools, change a digit in the <code class="bx-inline">demo_visits</code> cookie, and reload: the count resets and <code class="bx-inline">tampered</code> is <code class="bx-inline">true</code>. The same thing from a terminal:</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>curl -s -c jar.txt http://localhost:3003/docs/request-response/demo/signed-cookie   ## {"visits":1,"tampered":false}
+curl -s -b jar.txt http://localhost:3003/docs/request-response/demo/signed-cookie   ## {"visits":2,"tampered":false}
+curl -s -b "demo_visits=s%3A99.forged" http://localhost:3003/docs/request-response/demo/signed-cookie   ## {"visits":1,"tampered":true}</code></pre>
+<p><code class="bx-inline">req.signedCookies</code> holds the original value of each signed cookie, or <code class="bx-inline">false</code> for one whose signature doesn't check out. Either way a signed cookie is removed from <code class="bx-inline">req.cookies</code>, so a forged value can't be read there by mistake. Test for tampering with <code class="bx-inline">=== false</code> — a plain <code class="bx-inline">==</code> would also match a genuine value of <code class="bx-inline">"0"</code> or <code class="bx-inline">"no"</code>.</p>
+<div class="bx-callout bx-warn">
+  <strong>Signed is not encrypted</strong>
+  Anyone holding the cookie can read its value; the signature only proves this server issued it. Don't put secrets in one, and keep anything that must be revocable in the <a href="/docs/sessions">session</a> instead. To change the secret without logging everyone out, pass an array — <code class="bx-inline">app.set( "cookie secret", [ newSecret, oldSecret ] )</code> signs with the first and accepts both.
+</div>
 
 <h2>Tips &amp; Tricks: res.dump()</h2>
 <p><code class="bx-inline">res.dump()</code> is BoxLang's own rich, interactive <code class="bx-inline">dump()</code> — the same one you'd get from a CLI script — rendered as the HTTP response instead of printed to the console. A few things worth knowing:</p>

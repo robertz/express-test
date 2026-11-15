@@ -5,6 +5,22 @@ app = boxExpress()
 app.health()
 app.metrics()    // Prometheus endpoint at /metrics — see the Observability page
 
+// The Middleware page's live example: a webhook whose JSON body is only
+// accepted if its X-Signature header is the HMAC-SHA256 of the exact bytes
+// sent. Registered above the app-wide boxExpressJSON() below on purpose —
+// whichever parser reaches a body first reads it, and that one wouldn't check.
+webhookSecret = "demo-webhook-secret"
+app.post( "/docs/middleware/demo/webhook",
+    boxExpressJSON( { verify: ( req, res, bodyBytes ) => {
+        var expected = lCase( hmac( bodyBytes, webhookSecret, "HmacSHA256" ) )
+        var given = req.get( "X-Signature" ) ?: ""
+        if ( !createObject( "java", "java.security.MessageDigest" ).isEqual( expected.getBytes( "UTF-8" ), given.getBytes( "UTF-8" ) ) ) {
+            throw( "signature mismatch" )
+        }
+    } } ),
+    ( req, res ) => res.json( { verified: true, event: req.body.event ?: "" } )
+)
+
 // A single variadic app.use() call, registered in order — see the
 // "Multiple middleware in one call" section on the Middleware page.
 app.use(
@@ -16,6 +32,14 @@ app.use(
 )
 app.set( "views", expandPath( "./views" ) )
 app.set( "requestId", true )    // X-Request-Id header, req.id, and the id in log lines
+
+// Signs res.cookie( ..., { signed: true } ) — see "Signed cookies" on the
+// Request & Response page. The fallback is for running the demo locally only.
+app.set( "cookie secret", server.system.environment.COOKIE_SECRET ?: "dev-only-secret" )
+
+// See "Timeouts and size limits" on the Configuration page.
+app.set( "requestTimeoutMs", 30000 )   // a handler has 30s to start responding
+app.set( "maxBodySize", 12582912 )     // 12MB, a little over boxExpressUpload()'s 10MB default
 
 app.set( "reloadOnChange", true )
 app.set("env", "development")
@@ -95,6 +119,41 @@ app.get( "/docs/testing/demo", ( req, res ) => {
     var result = demo.inject( { url: "/hello/ada?shout=1" } )
     res.json( { statusCode: result.statusCode, contentType: result.header( "content-type" ), body: result.json() } )
 } )
+
+// The Configuration page's live example: a handler that would take 5s,
+// cut off after 1s by its own req.setTimeout().
+app.get( "/docs/config/demo/slow", ( req, res ) => {
+    req.setTimeout( 1000 )
+    sleep( 5000 )
+    res.send( "you won't see this" )
+} )
+
+// The Request & Response page's live example: one URL, HTML or JSON
+// depending on the Accept header. Mounted as a router so req.baseUrl has
+// something to show.
+negotiationDemo = boxExpressRouter()
+negotiationDemo.get( "/negotiate", ( req, res ) => {
+    var info = {
+        accepts: req.accepts( "html", "json" ),
+        language: req.acceptsLanguages( "en", "fr", "de" ),
+        xhr: req.xhr,
+        baseUrl: req.baseUrl,
+        path: req.path,
+        originalUrl: req.originalUrl
+    }
+    res.format( [
+        html: () => res.send( "<pre>" & encodeForHTML( JSONSerialize( info ) ) & "</pre>" ),
+        json: () => res.json( info )
+    ] )
+} )
+negotiationDemo.get( "/signed-cookie", ( req, res ) => {
+    var previous = req.signedCookies.demo_visits ?: 0
+    var tampered = ( previous === false )
+    var visits = tampered ? 1 : previous + 1
+    res.cookie( "demo_visits", visits, { signed: true, path: "/docs/request-response/demo" } )
+    res.json( { visits: visits, tampered: tampered } )
+} )
+app.use( "/docs/request-response/demo", negotiationDemo )
 
 app.get( "/docs/request-response", ( req, res ) => {
     res.render( "docs/request-response", { title: "Request & Response", docsMode: true, currentPath: req.path } )

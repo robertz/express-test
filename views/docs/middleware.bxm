@@ -32,7 +32,9 @@
 <table class="bx-table">
   <tr><th>BIF</th><th>Purpose</th></tr>
   <tr><td><code class="bx-inline">boxExpressJSON()</code></td><td>Parses <code class="bx-inline">application/json</code> request bodies into <code class="bx-inline">req.body</code></td></tr>
-  <tr><td><code class="bx-inline">boxExpressUrlencoded()</code></td><td>Parses <code class="bx-inline">application/x-www-form-urlencoded</code> bodies into <code class="bx-inline">req.body</code></td></tr>
+  <tr><td><code class="bx-inline">boxExpressUrlencoded()</code></td><td>Parses <code class="bx-inline">application/x-www-form-urlencoded</code> bodies into <code class="bx-inline">req.body</code> — a malformed <code class="bx-inline">%</code> escape gets a 400</td></tr>
+  <tr><td><code class="bx-inline">boxExpressText()</code></td><td>Puts a <code class="bx-inline">text/plain</code> body on <code class="bx-inline">req.body</code> as a string</td></tr>
+  <tr><td><code class="bx-inline">boxExpressRaw()</code></td><td>Puts an <code class="bx-inline">application/octet-stream</code> body on <code class="bx-inline">req.body</code> as the exact bytes received — see <a href="##body-parsers">Body parser options</a></td></tr>
   <tr><td><code class="bx-inline">boxExpressStatic(dir)</code></td><td>Serves static files from <code class="bx-inline">dir</code>, with ETag/Last-Modified conditional GET support</td></tr>
   <tr><td><code class="bx-inline">boxExpressSession()</code></td><td>Cookie-based sessions — populates <code class="bx-inline">req.session</code></td></tr>
   <tr><td><code class="bx-inline">boxExpressUpload(options)</code></td><td>Parses <code class="bx-inline">multipart/form-data</code> — fields into <code class="bx-inline">req.body</code>, files into <code class="bx-inline">req.files</code></td></tr>
@@ -47,6 +49,51 @@ app.use( boxExpressUrlencoded() )
 app.use( boxExpressSession() )
 app.use( "/public", boxExpressStatic( expandPath( "./public" ) ) )</code></pre>
 <p>These are opt-in by design — a route that never reads <code class="bx-inline">req.body</code> doesn't pay for body-parsing on every request.</p>
+
+<h2 id="body-parsers">Body parser options</h2>
+<p>The four body parsers — <code class="bx-inline">boxExpressJSON()</code>, <code class="bx-inline">boxExpressUrlencoded()</code>, <code class="bx-inline">boxExpressText()</code>, <code class="bx-inline">boxExpressRaw()</code> — share three options:</p>
+<table class="bx-table">
+  <tr><th>Option</th><th>Effect</th></tr>
+  <tr><td><code class="bx-inline">limit</code></td><td>Largest body, in bytes (default 100KB) — a bigger one gets a 413</td></tr>
+  <tr><td><code class="bx-inline">type</code></td><td>Which <code class="bx-inline">Content-Type</code>s to parse: a MIME type, an extension, a wildcard or a <code class="bx-inline">+suffix</code>, an array of those, or a function <code class="bx-inline">( req ) => boolean</code></td></tr>
+  <tr><td><code class="bx-inline">verify</code></td><td><code class="bx-inline">( req, res, bodyBytes ) => {{...}}</code>, called with the bytes exactly as received, before parsing. Throw to reject the request with a 403</td></tr>
+</table>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.use( boxExpressJSON( { type: [ "json", "+json" ] } ) )   // also application/vnd.api+json
+app.use( boxExpressText( { type: [ "text/*", "xml" ] } ) )
+app.use( boxExpressRaw( { type: "*/*" } ) )                  // whatever nothing above parsed</code></pre>
+<p>A request body can only be read once, so a parser skips any request an earlier one already handled. That's what makes the catch-all on the last line safe: it only sees what the others passed over.</p>
+
+<h3>Verifying a signed webhook</h3>
+<p>Webhook senders sign the exact bytes they send. Parsing the JSON and serializing it again doesn't reproduce those bytes, so the check has to see the body first — that's what <code class="bx-inline">verify</code> is for. This route is live on this site:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>webhookSecret = "demo-webhook-secret"
+
+app.post( "/docs/middleware/demo/webhook",
+    boxExpressJSON( { verify: ( req, res, bodyBytes ) => {
+        var expected = lCase( hmac( bodyBytes, webhookSecret, "HmacSHA256" ) )
+        var given = req.get( "X-Signature" ) ?: ""
+        // Constant-time: == stops at the first difference, which leaks how much of a guess was right.
+        if ( !createObject( "java", "java.security.MessageDigest" ).isEqual( expected.getBytes( "UTF-8" ), given.getBytes( "UTF-8" ) ) ) {
+            throw( "signature mismatch" )
+        }
+    } } ),
+    ( req, res ) => res.json( { verified: true, event: req.body.event ?: "" } )
+)</code></pre>
+<p>Sign a payload with the demo secret and send it, then change one character of the body and send it again:</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>BODY='{"event":"paid","amount":1250}'
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac demo-webhook-secret | awk '{print $NF}')
+
+curl -i -X POST -H "Content-Type: application/json" -H "X-Signature: $SIG" \
+  -d "$BODY" http://localhost:3003/docs/middleware/demo/webhook
+## 200 {"verified":true,"event":"paid"}
+
+curl -i -X POST -H "Content-Type: application/json" -H "X-Signature: $SIG" \
+  -d '{"event":"paid","amount":9999}' http://localhost:3003/docs/middleware/demo/webhook
+## 403 {"error":true,"message":"Request body failed verification"}</code></pre>
+<div class="bx-callout bx-warn">
+  <strong>Register the webhook route before your app-wide parser</strong>
+  Whichever parser reaches a body first is the one that reads it. In this site's <code class="bx-inline">app.bxs</code> the webhook route sits above the <code class="bx-inline">app.use( boxExpressJSON(), ... )</code> line; below it, the app-wide parser would have parsed the body unchecked and left the route's parser nothing to verify.
+</div>
+
 
 <h2>Security headers (boxExpressHelmet)</h2>
 <p>Mirrors the npm <a href="https://github.com/helmetjs/helmet" target="_blank" rel="noopener">helmet</a> package's most commonly used defaults, with no configuration needed:</p>
