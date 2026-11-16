@@ -8,7 +8,7 @@
   <tr><td><code class="bx-inline">req.method</code></td><td>Uppercased HTTP method, e.g. <code class="bx-inline">"GET"</code></td></tr>
   <tr><td><code class="bx-inline">req.path</code></td><td>Path portion of the URL, no query string</td></tr>
   <tr><td><code class="bx-inline">req.originalUrl</code></td><td>Path plus query string as received</td></tr>
-  <tr><td><code class="bx-inline">req.query</code></td><td>Struct of parsed query-string parameters</td></tr>
+  <tr><td><code class="bx-inline">req.query</code></td><td>Struct of parsed query-string parameters. A key sent once is a string; a repeated key is an array — see <a href="##repeated-keys">Repeated keys</a></td></tr>
   <tr><td><code class="bx-inline">req.params</code></td><td>Struct of captured route params (<code class="bx-inline">:id</code> segments)</td></tr>
   <tr><td><code class="bx-inline">req.body</code></td><td>Parsed request body — populated by <code class="bx-inline">boxExpressJSON()</code>/<code class="bx-inline">boxExpressUrlencoded()</code>/<code class="bx-inline">boxExpressUpload()</code>, empty struct otherwise</td></tr>
   <tr><td><code class="bx-inline">req.files</code></td><td>Uploaded files, populated by <code class="bx-inline">boxExpressUpload()</code></td></tr>
@@ -22,6 +22,7 @@
   <tr><td><code class="bx-inline">req.subdomains</code></td><td>Labels in front of the domain, nearest the domain first — <code class="bx-inline">tobi.ferrets.example.com</code> gives <code class="bx-inline">[ "ferrets", "tobi" ]</code>. <code class="bx-inline">app.set( "subdomain offset", 3 )</code> for a domain like <code class="bx-inline">example.co.uk</code></td></tr>
   <tr><td><code class="bx-inline">req.xhr</code></td><td><code class="bx-inline">true</code> when <code class="bx-inline">X-Requested-With</code> is <code class="bx-inline">XMLHttpRequest</code> (jQuery and axios send it; <code class="bx-inline">fetch()</code> doesn't)</td></tr>
   <tr><td><code class="bx-inline">req.baseUrl</code></td><td>The path the current router or path-scoped middleware is mounted at — <code class="bx-inline">""</code> at the top level</td></tr>
+  <tr><td><code class="bx-inline">req.fresh</code> / <code class="bx-inline">req.stale</code></td><td>Whether the client's cached copy still matches the <code class="bx-inline">ETag</code> or <code class="bx-inline">Last-Modified</code> set on the response so far — see <a href="##etags">ETags and 304s</a></td></tr>
   <tr><td><code class="bx-inline">req.accepts(types)</code></td><td>Whichever of the offered types the <code class="bx-inline">Accept</code> header prefers, or <code class="bx-inline">false</code> — see <a href="##content-negotiation">Content negotiation</a></td></tr>
   <tr><td><code class="bx-inline">req.acceptsLanguages(langs)</code></td><td>The same against <code class="bx-inline">Accept-Language</code></td></tr>
   <tr><td><code class="bx-inline">req.is(types)</code></td><td>The first given type the request's own <code class="bx-inline">Content-Type</code> matches, or <code class="bx-inline">false</code></td></tr>
@@ -113,6 +114,51 @@ curl -i -H "Accept: image/png" http://localhost:3003/docs/request-response/demo/
     }
     res.sendStatus( 204 )
 } )</code></pre>
+
+<h2 id="repeated-keys">Repeated keys in query strings and forms</h2>
+<p><code class="bx-inline">req.query</code> follows Express 5's default parser. A key that appears once is a string. A key that repeats — a multi-select, checkboxes sharing a name, a filter UI — is an array, in the order sent. <code class="bx-inline">boxExpressUrlencoded()</code> reads form bodies the same way.</p>
+<table class="bx-table">
+  <tr><th>Request</th><th><code class="bx-inline">req.query</code></th></tr>
+  <tr><td><code class="bx-inline">?tag=a</code></td><td><code class="bx-inline">{ tag: "a" }</code></td></tr>
+  <tr><td><code class="bx-inline">?tag=a&amp;tag=b</code></td><td><code class="bx-inline">{ tag: [ "a", "b" ] }</code></td></tr>
+  <tr><td><code class="bx-inline">?tag[]=a&amp;tag[]=b</code></td><td><code class="bx-inline">{ "tag[]": [ "a", "b" ] }</code> — brackets are not parsed</td></tr>
+  <tr><td><code class="bx-inline">?Tag=a&amp;tag=b</code></td><td><code class="bx-inline">{ Tag: [ "a", "b" ] }</code> — struct keys are case-insensitive</td></tr>
+</table>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>negotiationDemo.get( "/tags", ( req, res ) => {   // mounted at /docs/request-response/demo
+    var tags = req.query.tag ?: []
+    if ( !isArray( tags ) ) {
+        tags = [ tags ]
+    }
+    res.json( { query: req.query, tags: tags } )
+} )</code></pre>
+<p>Try it with <a href="/docs/request-response/demo/tags?tag=boxlang">one tag</a> and with <a href="/docs/request-response/demo/tags?tag=boxlang&amp;tag=express&amp;tag=undertow&amp;page=2">three</a>.</p>
+<div class="bx-callout bx-warn">
+  <strong>Any client can repeat a key</strong>
+  A value you expect to be a string can arrive as an array, and string code (<code class="bx-inline">len()</code>, <code class="bx-inline">&amp;</code>, <code class="bx-inline">trim()</code>) then throws. Normalise it as above, or declare it with <a href="/docs/middleware##validation">boxExpressValidate()</a>: a <code class="bx-inline">string</code> or <code class="bx-inline">integer</code> field answers <code class="bx-inline">400</code> for an array, and an <code class="bx-inline">array</code> field accepts one value or several.
+</div>
+
+<h2 id="etags">ETags and 304s</h2>
+<p>With <code class="bx-inline">app.set( "etag", "weak" )</code>, <code class="bx-inline">res.send()</code>, <code class="bx-inline">res.json()</code>, <code class="bx-inline">res.render()</code> and <code class="bx-inline">res.sendBytes()</code> tag a <code class="bx-inline">GET</code> or <code class="bx-inline">HEAD</code> response with a hash of its body. A client that sends the tag back in <code class="bx-inline">If-None-Match</code> gets an empty <code class="bx-inline">304 Not Modified</code> instead of the body again. It is off by default; this site turns it on.</p>
+<table class="bx-table">
+  <tr><th><code class="bx-inline">app.set( "etag", ... )</code></th><th>Result</th></tr>
+  <tr><td><code class="bx-inline">false</code> (default)</td><td>No <code class="bx-inline">ETag</code></td></tr>
+  <tr><td><code class="bx-inline">"weak"</code> or <code class="bx-inline">true</code></td><td><code class="bx-inline">W/"&lt;length&gt;-&lt;SHA-1&gt;"</code>, the same format Express uses</td></tr>
+  <tr><td><code class="bx-inline">"strong"</code></td><td>The same without <code class="bx-inline">W/</code></td></tr>
+  <tr><td><code class="bx-inline">( bodyBytes, encoding ) => tag</code></td><td>Your own tag</td></tr>
+</table>
+<p><a href="/docs/request-response/demo/etag">This route</a> always sends the same JSON. Reload it with dev tools open and the second response is a <code class="bx-inline">304</code>; from a terminal:</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>curl -i http://localhost:3003/docs/request-response/demo/etag                              ## 200, with an ETag header
+curl -i -H 'If-None-Match: &lt;that ETag&gt;' http://localhost:3003/docs/request-response/demo/etag   ## 304, no body
+curl -i -H 'If-None-Match: &lt;that ETag&gt;' -H 'Cache-Control: no-cache' http://localhost:3003/docs/request-response/demo/etag   ## 200 again</code></pre>
+<p>The handler still runs — the tag is a hash of what it built — so this saves bandwidth, not work. To skip the work, set a validator that is cheap to compute and check <code class="bx-inline">req.fresh</code> first:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/reports/:id", ( req, res ) => {
+    res.set( "ETag", '"report-' &amp; reports.versionOf( req.params.id ) &amp; '"' )   // cheap
+    if ( req.fresh ) {
+        return res.status( 304 ).end()
+    }
+    res.json( reports.build( req.params.id ) )                                   // expensive
+} )</code></pre>
+<p>A response that carries its own <code class="bx-inline">ETag</code> or <code class="bx-inline">Last-Modified</code> gets the automatic <code class="bx-inline">304</code> whether or not the <code class="bx-inline">etag</code> setting is on. Files sent with <code class="bx-inline">res.sendFile()</code> or the static middleware have always had their own tags and are not affected.</p>
 
 <h2 id="signed-cookies">Signed cookies</h2>
 <p>A cookie is whatever the browser sends back, and a user can edit theirs. A signed cookie carries an HMAC of its own value, so an edited one is rejected when it returns. Set a secret once, then pass <code class="bx-inline">signed: true</code>:</p>

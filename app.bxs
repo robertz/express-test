@@ -58,6 +58,7 @@ app.set( "log", "access" )      // one line per request once answered: status, d
 app.set( "cookie secret", server.system.environment.COOKIE_SECRET ?: "dev-only-secret" )
 
 // See "Timeouts and size limits" on the Configuration page.
+app.set( "etag", "weak" )              // tag send()/json() bodies; a matching If-None-Match gets a 304
 app.set( "requestTimeoutMs", 30000 )   // a handler has 30s to start responding
 app.set( "maxBodySize", 12582912 )     // 12MB, a little over boxExpressUpload()'s 10MB default
 
@@ -182,6 +183,17 @@ negotiationDemo.get( "/signed-cookie", ( req, res ) => {
     res.cookie( "demo_visits", visits, { signed: true, path: "/docs/request-response/demo" } )
     res.json( { visits: visits, tampered: tampered } )
 } )
+// A repeated key arrives as an array; a key sent once stays a string.
+negotiationDemo.get( "/tags", ( req, res ) => {
+    var tags = req.query.tag ?: []
+    if ( !isArray( tags ) ) {
+        tags = [ tags ]
+    }
+    res.json( { query: req.query, tags: tags } )
+} )
+// The body never changes, so its ETag doesn't either: a second request
+// carrying it in If-None-Match gets an empty 304.
+negotiationDemo.get( "/etag", ( req, res ) => res.json( { message: "This body only crosses the wire once.", docs: "/docs/request-response" } ) )
 app.use( "/docs/request-response/demo", negotiationDemo )
 
 app.get( "/docs/request-response", ( req, res ) => {

@@ -319,7 +319,7 @@ curl -s -X POST -H "Content-Type: application/json" \
   <tr><td><code class="bx-inline">min</code>, <code class="bx-inline">max</code></td><td>Bounds for numbers</td></tr>
   <tr><td><code class="bx-inline">minLength</code>, <code class="bx-inline">maxLength</code>, <code class="bx-inline">pattern</code>, <code class="bx-inline">trim</code></td><td>For strings</td></tr>
   <tr><td><code class="bx-inline">oneOf</code></td><td>An array of allowed values</td></tr>
-  <tr><td><code class="bx-inline">items</code>, <code class="bx-inline">minItems</code>, <code class="bx-inline">maxItems</code></td><td>For arrays — <code class="bx-inline">items</code> is the rule for each element</td></tr>
+  <tr><td><code class="bx-inline">items</code>, <code class="bx-inline">minItems</code>, <code class="bx-inline">maxItems</code></td><td>For arrays — <code class="bx-inline">items</code> is the rule for each element. An <code class="bx-inline">array</code> field accepts a single value too (<code class="bx-inline">?tag=a</code> becomes <code class="bx-inline">[ "a" ]</code>); every other type rejects a <a href="/docs/request-response##repeated-keys">repeated key</a></td></tr>
   <tr><td><code class="bx-inline">fields</code></td><td>Rules for a nested object</td></tr>
   <tr><td><code class="bx-inline">validate</code></td><td>Your own <code class="bx-inline">( value, req ) => ...</code> check — return <code class="bx-inline">true</code>, or a message</td></tr>
 </table>
