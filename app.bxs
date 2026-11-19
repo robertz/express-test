@@ -21,6 +21,17 @@ app.post( "/docs/middleware/demo/webhook",
     ( req, res ) => res.json( { verified: true, event: req.body.event ?: "" } )
 )
 
+// The Middleware page's rate-limit handler example: an HTML page that stays
+// an HTML page once you're over the limit, instead of turning into JSON.
+app.get( "/docs/middleware/demo/limited",
+    boxExpressRateLimit( {
+        windowMs: 30000,
+        max: 3,
+        handler: ( req, res, next, info ) => res.send( "<h1>Slow down</h1><p>That's more than " & info.limit & " requests in 30 seconds. Try again in " & info.resetSeconds & " seconds.</p>" )
+    } ),
+    ( req, res ) => res.send( "<h1>Welcome</h1><p>Reload this page a few times quickly.</p>" )
+)
+
 // The Middleware page's validation example. Its own boxExpressJSON() runs
 // first; boxExpressValidate() reads req.body, it doesn't parse it.
 app.post( "/docs/middleware/demo/signup",

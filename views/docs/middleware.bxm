@@ -158,6 +158,19 @@ app.use( "/login", boxExpressRateLimit( { windowMs: 15 * 60000, max: 5 } ) )  //
   <strong>Try it live</strong>
   This site's own <a href="/upload">Upload Demo</a> is rate-limited exactly this way — 10 uploads per 5 minutes per IP. Submit the form more than 10 times in a row to see the <code class="bx-inline">429</code>.
 </div>
+<p>The in-memory store counts at most <code class="bx-inline">maxKeys</code> keys separately (default <code class="bx-inline">100000</code>, since 0.2.29). Once it's full, a key it isn't already counting goes into one shared bucket until others expire — so a flood of distinct keys can't grow memory without limit, and can't get through uncounted either. <code class="bx-inline">0</code> removes the cap.</p>
+<h3 id="rate-limit-handler">Choosing what a limited request gets</h3>
+<p>By default a limited request gets a JSON body (the <code class="bx-inline">message</code> option). On a route that serves HTML that's the wrong answer — a reader would see a raw JSON blob. Pass <code class="bx-inline">handler</code> to answer it yourself:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.get( "/search", boxExpressRateLimit( {
+    windowMs: 60000,
+    max: 30,
+    handler: ( req, res, next, info ) => res.render( "search/index", { retryAfter: info.resetSeconds } )
+} ), ( req, res ) => { /* the normal search page */ } )</code></pre>
+<p>The status (<code class="bx-inline">429</code>, or your <code class="bx-inline">statusCode</code>) and <code class="bx-inline">Retry-After</code> are set before the handler runs, so it only has to produce the body. <code class="bx-inline">info</code> carries <code class="bx-inline">limit</code>, <code class="bx-inline">remaining</code>, <code class="bx-inline">resetSeconds</code> (the same number sent in <code class="bx-inline">Retry-After</code>) and <code class="bx-inline">key</code>.</p>
+<div class="bx-callout">
+  <strong>Try it live</strong>
+  <a href="/docs/middleware/demo/limited">This page</a> allows 3 requests per 30 seconds. Reload it a fourth time and you get an HTML page saying how long to wait, sent as a <code class="bx-inline">429</code>.
+</div>
 
 <h2>CSRF protection (boxExpressCsrf)</h2>
 <p>Mirrors the classic <a href="https://github.com/expressjs/csurf" target="_blank" rel="noopener">csurf</a> package's session-based token strategy. The token lives in <code class="bx-inline">req.session</code>, not its own cookie, so this must be registered <em>after</em> <code class="bx-inline">boxExpressSession()</code>:</p>

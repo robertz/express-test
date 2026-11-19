@@ -64,6 +64,8 @@ app.get( "/report/download", ( req, res ) => {
         savedAt: req.files.avatar[ 1 ].path
     } )
 } )</code></pre>
+<p>The body is capped at 10MB (<code class="bx-inline">limit</code>), and since 0.2.29 so is the number of parts in it: at most 100 files (<code class="bx-inline">maxFiles</code>) and 1000 other fields (<code class="bx-inline">maxFields</code>) per request. Over either is a <code class="bx-inline">413</code> and nothing is written to <code class="bx-inline">dest</code>. A route that takes a single file should say so:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>boxExpressUpload( { dest: expandPath( "./uploads" ), maxFiles: 1, maxFields: 10 } )</code></pre>
 <div class="bx-callout">
   <strong>Try it live</strong>
   This app has a working example wired up end to end — the <a href="/upload">Upload Demo</a> page posts to a real <code class="bx-inline">/upload</code> route saving to <code class="bx-inline">./uploads</code>.

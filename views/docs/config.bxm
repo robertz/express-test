@@ -92,7 +92,7 @@ app.set( "trust proxy", 1 )
 app.set( "views", expandPath( "./views" ) )</code></pre>
 
 <h2 id="limits">Timeouts and size limits</h2>
-<p>Five settings bound what one client can cost the server. <code class="bx-inline">0</code> turns any of them off, and a value that isn't a whole number throws at the <code class="bx-inline">app.set()</code> call.</p>
+<p>Six settings bound what one client can cost the server. <code class="bx-inline">0</code> turns any of them off, and a value that isn't a whole number throws at the <code class="bx-inline">app.set()</code> call.</p>
 <pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "requestTimeoutMs", 30000 )   // a handler has 30s to start responding
 app.set( "maxBodySize", 12582912 )     // 12MB, a little over the largest upload this app accepts</code></pre>
 <p>Both lines are in this site's own <code class="bx-inline">app.bxs</code>. When a request runs past its timeout, the handler's thread is interrupted — so the query, HTTP call or <code class="bx-inline">sleep()</code> it's waiting on throws — and the client gets a <code class="bx-inline">503</code>. One route that needs a different limit sets its own with <code class="bx-inline">req.setTimeout( ms )</code>:</p>
@@ -114,6 +114,11 @@ app.set( "maxBodySize", 12582912 )     // 12MB, a little over the largest upload
 <p><code class="bx-inline">"maxBodySize"</code> sits above the body parsers' own <code class="bx-inline">limit</code> options, which only apply where a parser is mounted. A request that declares its size is refused on its <code class="bx-inline">Content-Length</code> header alone, before the body is read:</p>
 <pre class="bx-code"><span class="bx-code-label">bash</span><code>head -c 13000000 /dev/zero | curl -i -X POST --data-binary @- http://localhost:3003/upload
 ## HTTP/1.1 413 Request Entity Too Large</code></pre>
+<p>Bytes aren't the only thing worth counting: 64KB of query string is room for over 20,000 one-character keys. Since 0.2.29 <code class="bx-inline">"parameterLimit"</code> (default <code class="bx-inline">1000</code>) caps how many <code class="bx-inline">key=value</code> pairs a query string may hold; one with more is answered <code class="bx-inline">400</code> before any middleware runs, rather than being cut short. <code class="bx-inline">boxExpressUrlencoded( { parameterLimit } )</code> does the same for form bodies (a <code class="bx-inline">413</code>), and <code class="bx-inline">boxExpressUpload( { maxFiles, maxFields } )</code> for multipart ones.</p>
+<pre class="bx-code"><span class="bx-code-label">bash</span><code>curl -i "http://localhost:3003/?$(seq -s '&' -f 'k%g=1' 1 1001)"
+## HTTP/1.1 400 Bad Request
+##
+## {"error":true,"message":"Query string has more than 1000 parameters"}</code></pre>
 
 <div class="bx-docs-pager">
   <a href="/docs/getting-started"><span>Previous</span>← Getting Started</a>

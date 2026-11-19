@@ -61,7 +61,11 @@
 </div>
 
 <h2>The session cookie</h2>
-<p>The session cookie is named <code class="bx-inline">connect.sid</code>, matching Express's own default — familiar if you're coming from Node. It's set with <code class="bx-inline">HttpOnly</code> by default, the same as <code class="bx-inline">res.cookie()</code>.</p>
+<p>The session cookie is named <code class="bx-inline">connect.sid</code>, matching Express's own default — familiar if you're coming from Node. It's set with <code class="bx-inline">HttpOnly</code> and <code class="bx-inline">SameSite=Lax</code> by default.</p>
+<p>Since BoxLang Express 0.2.29 the <code class="bx-inline">secure</code> option defaults to <code class="bx-inline">"auto"</code>: the cookie is marked <code class="bx-inline">Secure</code> whenever the request arrived over HTTPS (<code class="bx-inline">req.secure</code>), and left alone over plain HTTP so local development keeps working. BoxExpress doesn't terminate TLS itself, so that depends on <code class="bx-inline">app.set( "trust proxy", ... )</code> matching the proxy in front of it. Pass <code class="bx-inline">secure: true</code> or <code class="bx-inline">secure: false</code> to force it either way:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>app.set( "trust proxy", 1 )                      // one load balancer in front
+app.use( boxExpressSession() )                   // Secure over HTTPS, automatically
+app.use( boxExpressSession( { secure: true } ) ) // always Secure</code></pre>
 
 <div class="bx-docs-pager">
   <a href="/docs/views"><span>Previous</span>← Views &amp; Templates</a>
