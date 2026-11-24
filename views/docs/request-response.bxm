@@ -55,6 +55,7 @@
   <tr><td><code class="bx-inline">res.sendFile(path, options)</code></td><td>Sends a file inline, with ETag/Last-Modified 304 support; <code class="bx-inline">options.root</code> sandboxes the path against directory-escape</td></tr>
   <tr><td><code class="bx-inline">res.download(path, filename)</code></td><td><code class="bx-inline">sendFile()</code> that forces <code class="bx-inline">Content-Disposition: attachment</code></td></tr>
   <tr><td><code class="bx-inline">res.render(view, data)</code></td><td>Renders a view — see <a href="/docs/views">Views &amp; Templates</a></td></tr>
+  <tr><td><code class="bx-inline">res.renderToString(view, data)</code></td><td>Returns the rendered HTML without sending it (since 0.2.30) — see <a href="/docs/views##render-to-string">Views &amp; Templates</a></td></tr>
   <tr><td><code class="bx-inline">res.dump(data)</code></td><td>Sends BoxLang's rich, collapsible <code class="bx-inline">dump()</code> HTML view of a variable as the response — useful for quick debugging routes</td></tr>
 </table>
 

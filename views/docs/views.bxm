@@ -53,6 +53,10 @@ res.status( 404 ).render( "error", { layout: false, statusCode: 404 } )</code></
   ##partial( "partials/order-row", { order: order } )##
 &lt;/bx:loop&gt;
 &lt;/bx:output&gt;</code></pre>
+<h2 id="render-to-string">Rendering to a string</h2>
+<p>Since 0.2.30, <code class="bx-inline">res.renderToString( view, data )</code> returns what <code class="bx-inline">res.render()</code> would send and sends nothing — an HTML email body, a fragment inside a JSON response, output to cache. It merges locals and applies layouts the same way, so pass <code class="bx-inline">layout: false</code> for a bare fragment:</p>
+<pre class="bx-code"><span class="bx-code-label">bxs</span><code>var row = res.renderToString( "partials/order-row", { order: order, layout: false } )
+res.json( { id: order.id, html: row } )</code></pre>
 <p>A plain <code class="bx-inline">&lt;bx:include&gt;</code> still works too, since <code class="bx-inline">.bxm</code> templates are just BoxLang. Its path is relative to the file it's written in rather than to the views directory, and it can't be given data of its own.</p>
 
 <figure class="bx-screenshot">

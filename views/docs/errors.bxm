@@ -68,6 +68,9 @@ app.use( ( err, req, res, next ) => {
     res.send( "ok" )
 } )</code></pre>
 
+<h2>Errors after the response is sent</h2>
+<p>Once a response has gone out there's nothing left for an error handler to do, so an error thrown after <code class="bx-inline">res.send()</code> skips error-handling middleware. Since 0.2.30 it is logged to stdout instead of disappearing — <code class="bx-inline">Error after the response was sent, GET /orders: audit write failed</code> — and the response the client already has is unchanged. A client that hangs up in the middle of a download or an SSE stream produces the same line.</p>
+
 <div class="bx-docs-pager">
   <a href="/docs/static-files"><span>Previous</span>← Static Files &amp; Uploads</a>
   <a href="/docs/lifecycle"><span>Next</span>Process Lifecycle →</a>
